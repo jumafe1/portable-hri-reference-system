@@ -30,3 +30,12 @@ La prueba con NAO requiere que el workspace del laboratorio esté cargado y que
 el driver ya exponga `/nao/say`. El proveedor no arranca el driver, no envía
 movimiento y siempre desactiva voz animada. Una frase ya aceptada por NAOqi no
 puede cancelarse a través de este servicio.
+
+Con el driver verificado y el overlay del proyecto cargado:
+
+```bash
+python3 tests/capabilities_nao_speak_physical.py
+```
+
+El script comprueba el resultado técnico, libera el proveedor y solicita la
+confirmación auditiva del observador antes de aprobar la ejecución.

@@ -1,0 +1,17 @@
+repositories:
+  capabilities2:
+    type: git
+    url: https://github.com/AIResearchLab/capabilities2.git
+    version: 67606acbf2fe39e828b03985a2f6881b909c1091
+  naoqi_utilities_msgs:
+    type: git
+    url: https://github.com/SinfonIAUniandes/naoqi_utilities_msgs.git
+    version: 00831e4c4814dd77c036940948d22a2c8f33f6ef
+  portable-hri-interfaces:
+    type: git
+    url: https://github.com/jumafe1/portable-hri-interfaces.git
+    version: main
+  portable-hri-providers:
+    type: git
+    url: https://github.com/jumafe1/portable-hri-providers.git
+    version: main

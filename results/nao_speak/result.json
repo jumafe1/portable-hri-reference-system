@@ -1,0 +1,85 @@
+{
+  "started_utc": "2026-09-16T19:19:33.279236+00:00",
+  "checks": [
+    {
+      "name": "catalog",
+      "passed": true,
+      "interfaces": [
+        "hri_capability_interfaces/Speak"
+      ],
+      "providers": [
+        "hri_naoqi_providers/NaoSpeak"
+      ]
+    },
+    {
+      "name": "provider_selected",
+      "passed": true,
+      "running": {
+        "hri_capability_interfaces/Speak": "hri_naoqi_providers/NaoSpeak"
+      }
+    },
+    {
+      "name": "speak_translation",
+      "passed": true,
+      "response": {
+        "success": true,
+        "provider": "hri_naoqi_providers/NaoSpeak",
+        "message": "spoken"
+      },
+      "backend_request": {
+        "text": "Hola desde Capabilities2",
+        "language": "Spanish",
+        "animated": false,
+        "asynchronous": false
+      }
+    },
+    {
+      "name": "backend_timeout",
+      "passed": true,
+      "response": {
+        "success": false,
+        "provider": "hri_naoqi_providers/NaoSpeak",
+        "message": "nao_say_timeout"
+      }
+    },
+    {
+      "name": "request_after_timeout",
+      "passed": true,
+      "response": {
+        "success": true,
+        "provider": "hri_naoqi_providers/NaoSpeak",
+        "message": "spoken"
+      },
+      "backend_request": {
+        "text": "Solicitud posterior al timeout",
+        "language": "Spanish",
+        "animated": false,
+        "asynchronous": false
+      }
+    },
+    {
+      "name": "backend_error_propagated",
+      "passed": true,
+      "message": "backend_rejected"
+    },
+    {
+      "name": "explicit_free",
+      "passed": true,
+      "running": {}
+    },
+    {
+      "name": "backend_unavailable",
+      "passed": true,
+      "message": "nao_say_unavailable"
+    },
+    {
+      "name": "final_free",
+      "passed": true
+    }
+  ],
+  "limits": [
+    "The /nao/say backend is simulated; no robot or audio is used.",
+    "Capabilities2 v0.1.0 retains its known missing-provider reporting defect."
+  ],
+  "passed": true
+}

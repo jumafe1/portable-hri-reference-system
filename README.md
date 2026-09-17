@@ -20,6 +20,17 @@ cargado:
 python3 tests/capabilities_nao_speak_probe.py
 ```
 
+Para comprobar que el mismo `NaoSpeakRunner` puede reutilizarse con la interfaz
+equivalente de Pepper mediante remapeo ROS 2:
+
+```bash
+python3 tests/capabilities_nao_speak_probe.py --backend-service /pepper/say
+```
+
+Esta es una prueba de reutilización del runner: el proveedor todavía se
+identifica como `hri_naoqi_providers/NaoSpeak`. No sustituye la futura
+especificación explícita `PepperSpeak`.
+
 El manifiesto `portable_hri.repos` fija las dependencias externas conocidas.
 Los repositorios propios permanecen en `main` durante el desarrollo y deberán
 fijarse a etiquetas o commits antes del experimento final.
@@ -39,3 +50,16 @@ python3 tests/capabilities_nao_speak_physical.py
 
 El script comprueba el resultado técnico, libera el proveedor y solicita la
 confirmación auditiva del observador antes de aprobar la ejecución.
+
+Con el driver de Pepper exponiendo `/pepper/say`, la prueba diagnóstica del
+mismo runner se ejecuta así:
+
+```bash
+python3 tests/capabilities_nao_speak_physical.py \
+  --backend-service /pepper/say \
+  --text "Hola, esta es una prueba de Capabilities2 en Pepper."
+```
+
+El remapeo se aplica únicamente al proceso temporal de Capabilities2. La
+aplicación conserva `/hri/speak`; el resultado seguirá reportando `NaoSpeak`
+hasta implementar y registrar el proveedor definitivo `PepperSpeak`.

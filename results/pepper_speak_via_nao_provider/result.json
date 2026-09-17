@@ -1,8 +1,8 @@
 {
-  "started_utc": "2026-09-17T22:40:45.774016+00:00",
-  "backend_service": "/nao/say",
+  "started_utc": "2026-09-17T22:41:00.948065+00:00",
+  "backend_service": "/pepper/say",
   "provider": "hri_naoqi_providers/NaoSpeak",
-  "uses_backend_remapping": false,
+  "uses_backend_remapping": true,
   "checks": [
     {
       "name": "catalog",
@@ -81,7 +81,7 @@
     }
   ],
   "limits": [
-    "The /nao/say service is simulated; no robot or audio is used.",
+    "The /pepper/say service is simulated; no robot or audio is used.",
     "Capabilities2 v0.1.0 retains its known missing-provider reporting defect."
   ],
   "passed": true

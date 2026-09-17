@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the real Capabilities2 -> /hri/speak -> /nao/say validation."""
+"""Run NaoSpeakRunner against a real NAO or Pepper Say service."""
 
 import argparse
 from datetime import datetime, timezone
@@ -19,12 +19,18 @@ from naoqi_utilities_msgs.srv import Say
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 
-from capabilities_nao_speak_probe import CAPABILITY, PROVIDER, Probe
+from capabilities_nao_speak_probe import (
+    BACKEND_SERVICES,
+    CAPABILITY,
+    PROVIDER,
+    Probe,
+    capabilities_server_command,
+)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Speak once through the real NAO provider managed by Capabilities2."
+        description="Speak once through NaoSpeakRunner using a real robot Say service."
     )
     parser.add_argument(
         "--text",
@@ -32,6 +38,12 @@ def parse_args():
         help="Short phrase for the supervised physical validation.",
     )
     parser.add_argument("--language", default="Spanish")
+    parser.add_argument(
+        "--backend-service",
+        choices=BACKEND_SERVICES,
+        default="/nao/say",
+        help="Real Say service. Pepper reuses NaoSpeakRunner through ROS remapping.",
+    )
     return parser.parse_args()
 
 
@@ -47,12 +59,22 @@ def main():
         workspace
         / "portable-hri-providers/hri_naoqi_providers/capability_providers/NaoSpeak.yaml"
     )
-    evidence = repository / "results/nao_speak_physical"
+    robot_label = "NAO" if args.backend_service == "/nao/say" else "Pepper"
+    evidence_name = (
+        "nao_speak_physical"
+        if args.backend_service == "/nao/say"
+        else "pepper_speak_via_nao_provider_physical"
+    )
+    evidence = repository / f"results/{evidence_name}"
     evidence.mkdir(parents=True, exist_ok=True)
     results = {
         "started_utc": datetime.now(timezone.utc).isoformat(),
         "text": args.text,
         "language": args.language,
+        "robot": robot_label,
+        "backend_service": args.backend_service,
+        "provider": PROVIDER,
+        "uses_backend_remapping": args.backend_service != "/nao/say",
         "technical_success": False,
         "audible_confirmation": False,
     }
@@ -69,12 +91,13 @@ def main():
     executor_thread = threading.Thread(target=executor.spin, daemon=True)
     executor_thread.start()
     probe = Probe(node)
-    backend_client = node.create_client(Say, "/nao/say")
+    backend_client = node.create_client(Say, args.backend_service)
 
     try:
         if not backend_client.wait_for_service(timeout_sec=5.0):
             raise RuntimeError(
-                "/nao/say is unavailable. Start and verify the NAO driver first."
+                f"{args.backend_service} is unavailable. "
+                f"Start and verify the {robot_label} driver first."
             )
     finally:
         node.destroy_client(backend_client)
@@ -82,15 +105,10 @@ def main():
     with tempfile.TemporaryDirectory(prefix="portable-hri-physical-") as temporary:
         with (evidence / "server.log").open("w", encoding="utf-8") as server_log:
             server = subprocess.Popen(
-                [
-                    "ros2",
-                    "run",
-                    "capabilities2_server",
-                    "capabilities2_server_node",
-                    "--ros-args",
-                    "-p",
-                    f"db_file:={temporary}/capabilities.sqlite3",
-                ],
+                capabilities_server_command(
+                    f"{temporary}/capabilities.sqlite3",
+                    args.backend_service,
+                ),
                 stdout=server_log,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
@@ -165,7 +183,9 @@ def main():
                     server.wait(timeout=5)
 
     if results["technical_success"]:
-        confirmation = input("¿Escuchaste al NAO pronunciar la frase? [s/N]: ")
+        confirmation = input(
+            f"¿Escuchaste a {robot_label} pronunciar la frase? [s/N]: "
+        )
         results["audible_confirmation"] = confirmation.strip().lower() in {"s", "si", "sí"}
 
     results["passed"] = (

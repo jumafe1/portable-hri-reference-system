@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Exercise Capabilities2 -> portable Speak -> simulated /nao/say."""
+"""Exercise Capabilities2 -> portable Speak -> a simulated Say service."""
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -22,6 +23,7 @@ from rclpy.node import Node
 
 CAPABILITY = "hri_capability_interfaces/Speak"
 PROVIDER = "hri_naoqi_providers/NaoSpeak"
+BACKEND_SERVICES = ("/nao/say", "/pepper/say")
 SLOW_BACKEND_DELAY_SEC = 5.5
 
 
@@ -71,7 +73,36 @@ class Probe:
         return False
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Test NaoSpeakRunner against a simulated Say service."
+    )
+    parser.add_argument(
+        "--backend-service",
+        choices=BACKEND_SERVICES,
+        default="/nao/say",
+        help="Say service exposed by the simulated robot driver.",
+    )
+    return parser.parse_args()
+
+
+def capabilities_server_command(database_file, backend_service):
+    command = [
+        "ros2",
+        "run",
+        "capabilities2_server",
+        "capabilities2_server_node",
+        "--ros-args",
+        "-p",
+        f"db_file:={database_file}",
+    ]
+    if backend_service != "/nao/say":
+        command.extend(["-r", f"/nao/say:={backend_service}"])
+    return command
+
+
 def main():
+    args = parse_args()
     repository = Path(__file__).resolve().parents[1]
     workspace = repository.parent
     interface_path = (
@@ -82,13 +113,21 @@ def main():
         workspace
         / "portable-hri-providers/hri_naoqi_providers/capability_providers/NaoSpeak.yaml"
     )
-    evidence = repository / "results/nao_speak"
+    evidence_name = (
+        "nao_speak"
+        if args.backend_service == "/nao/say"
+        else "pepper_speak_via_nao_provider"
+    )
+    evidence = repository / f"results/{evidence_name}"
     evidence.mkdir(parents=True, exist_ok=True)
     results = {
         "started_utc": datetime.now(timezone.utc).isoformat(),
+        "backend_service": args.backend_service,
+        "provider": PROVIDER,
+        "uses_backend_remapping": args.backend_service != "/nao/say",
         "checks": [],
         "limits": [
-            "The /nao/say backend is simulated; no robot or audio is used.",
+            f"The {args.backend_service} service is simulated; no robot or audio is used.",
             "Capabilities2 v0.1.0 retains its known missing-provider reporting defect.",
         ],
     }
@@ -119,21 +158,16 @@ def main():
         response.message = "spoken" if response.success else "backend_rejected"
         return response
 
-    backend_service = node.create_service(Say, "/nao/say", fake_say)
+    backend_service = node.create_service(Say, args.backend_service, fake_say)
     probe = Probe(node)
 
     with tempfile.TemporaryDirectory(prefix="portable-hri-capabilities-") as temporary:
         with (evidence / "server.log").open("w", encoding="utf-8") as server_log:
             server = subprocess.Popen(
-                [
-                    "ros2",
-                    "run",
-                    "capabilities2_server",
-                    "capabilities2_server_node",
-                    "--ros-args",
-                    "-p",
-                    f"db_file:={temporary}/capabilities.sqlite3",
-                ],
+                capabilities_server_command(
+                    f"{temporary}/capabilities.sqlite3",
+                    args.backend_service,
+                ),
                 stdout=server_log,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,

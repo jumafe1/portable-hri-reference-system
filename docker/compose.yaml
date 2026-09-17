@@ -1,0 +1,25 @@
+name: portable-hri
+
+services:
+  dev:
+    image: portable-hri-dev:jazzy
+    build:
+      context: .
+    init: true
+    network_mode: host
+    cpus: 4
+    mem_limit: 4g
+    environment:
+      ROS_DOMAIN_ID: "${ROS_DOMAIN_ID:-42}"
+    volumes:
+      - type: bind
+        source: ${PORTABLE_HRI_SRC:-../..}
+        target: /workspace/src
+      - build:/workspace/build
+      - install:/workspace/install
+      - log:/workspace/log
+
+volumes:
+  build:
+  install:
+  log:

@@ -2,6 +2,50 @@
 
 Integración y pruebas reproducibles de la arquitectura portable HRI sobre ROS 2.
 
+## Aplicación portable con YASMIN
+
+`hri_reference_app` contiene la primera aplicación de referencia en Python. Su
+máquina de estados YASMIN establece un vínculo con Capabilities2, solicita el
+contrato `hri_capability_interfaces/Speak`, ejecuta `/hri/speak` y libera la
+capacidad tanto si la voz termina correctamente como si el servicio del robot
+falla.
+
+La aplicación no llama directamente a `/nao/say` ni a `/pepper/say`. El mismo
+flujo se ejecuta en ambas plataformas y el `launch` limita la diferencia al
+servicio ROS 2 que usa el proveedor C++ existente:
+
+```text
+YASMIN -> Speak -> Capabilities2 -> NaoSpeakRunner -> /nao/say
+                                            \-----> /pepper/say (remapeado)
+```
+
+Instalar dependencias, compilar y cargar el overlay:
+
+```bash
+sudo apt install ros-jazzy-yasmin ros-jazzy-yasmin-ros
+rosdep install --from-paths src --ignore-src -r -y
+colcon build --packages-up-to hri_reference_app --symlink-install
+source install/setup.bash
+```
+
+Con el driver correspondiente ejecutándose en otra terminal y exponiendo
+`/nao/say` o `/pepper/say`, usar uno de estos comandos:
+
+```bash
+ros2 launch hri_reference_app speak_demo.launch.py \
+  robot:=nao \
+  text:="Hola, esta es una aplicación portable en NAO."
+
+ros2 launch hri_reference_app speak_demo.launch.py \
+  robot:=pepper \
+  text:="Hola, esta es una aplicación portable en Pepper."
+```
+
+El resultado final se imprime como JSON. `outcome` debe ser
+`application_succeeded` y `released` debe ser `true`. La ruta Pepper todavía
+reutiliza `hri_naoqi_providers/NaoSpeak` mediante remapeo; no representa un
+proveedor Pepper definitivo.
+
 ## Prueba `Speak` con Capabilities2
 
 La primera prueba vertical administra `hri_capability_interfaces/Speak` mediante

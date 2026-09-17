@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>hri_reference_app</name>
+  <version>0.1.0</version>
+  <description>Portable HRI reference applications orchestrated with YASMIN.</description>
+
+  <maintainer email="jumafe1@users.noreply.github.com">jumafe1</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>capabilities2_msgs</exec_depend>
+  <exec_depend>capabilities2_server</exec_depend>
+  <exec_depend>hri_capability_interfaces</exec_depend>
+  <exec_depend>hri_naoqi_providers</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>yasmin</exec_depend>
+  <exec_depend>yasmin_ros</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

@@ -29,8 +29,26 @@ objetivo no alcanzado y liberación. El proveedor acepta inicialmente hasta
 Esta implementación no convierte un *timeout* en cancelación. El servicio
 SinfonIA disponible no expone `ALMotion.stopMove`; después de un *timeout* el
 proveedor bloquea nuevas órdenes hasta ser liberado y reiniciado. Por esta
-razón, la prueba mediante Capabilities2 con un robot físico permanece
-deliberadamente pendiente hasta incorporar una vía de parada segura.
+razón, cualquier prueba física debe limitarse a una orden pequeña, despejada y
+supervisada; no debe interpretarse el *timeout* como una orden de parada.
+
+Para una validación física supervisada, con el driver del robot ya iniciado,
+usar `--x` y `--y` en metros y `--theta` en radianes. Por ejemplo:
+
+```bash
+python3 tests/capabilities_naoqi_move_relative_physical.py \
+  --robot pepper --x 0.1 --y 0.0 --theta 0.0
+
+python3 tests/capabilities_naoqi_move_relative_physical.py \
+  --robot nao --x 0.1 --y 0.0 --theta 0.0
+```
+
+El script es el cliente de prueba del proveedor: registra y solicita
+`MoveRelative`, comprueba `move_to`, odometría y activación, y exige escribir
+`MOVER` antes de actuar. Después verifica el desplazamiento mediante
+odometría, libera la capacidad y pide confirmación visual. No modifica la vida
+autónoma ni usa `cmd_vel`. Debido a la ausencia de cancelación remota, debe
+ejecutarse con espacio libre, supervisión directa y acceso al botón físico.
 
 ## Detección portable de personas
 

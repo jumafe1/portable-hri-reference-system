@@ -1,0 +1,150 @@
+{
+  "started_utc": "2026-09-22T20:35:07.161149+00:00",
+  "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+  "checks": [
+    {
+      "name": "catalog",
+      "passed": true,
+      "interfaces": [
+        "hri_capability_interfaces/MoveRelative"
+      ],
+      "providers": [
+        "hri_naoqi_providers/NaoqiMoveRelative"
+      ]
+    },
+    {
+      "name": "provider_selected",
+      "passed": true,
+      "running": {
+        "hri_capability_interfaces/MoveRelative": "hri_naoqi_providers/NaoqiMoveRelative"
+      }
+    },
+    {
+      "name": "odometry_required",
+      "passed": true,
+      "response": {
+        "success": false,
+        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "message": "odometry_unavailable_before_motion",
+        "achieved_x_m": 0.0,
+        "achieved_y_m": 0.0,
+        "achieved_theta_rad": 0.0
+      }
+    },
+    {
+      "name": "motion_verified",
+      "passed": true,
+      "response": {
+        "success": true,
+        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "message": "motion_completed",
+        "achieved_x_m": 0.1000000014901161,
+        "achieved_y_m": 0.050000000745058025,
+        "achieved_theta_rad": 0.20000000298023227
+      },
+      "backend_events": [
+        [
+          "autonomous",
+          false
+        ],
+        [
+          "move",
+          [
+            0.10000000149011612,
+            0.05000000074505806,
+            0.20000000298023224
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "invalid_requests_rejected",
+      "passed": true,
+      "zero": {
+        "success": false,
+        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "message": "movement_is_zero",
+        "achieved_x_m": 0.0,
+        "achieved_y_m": 0.0,
+        "achieved_theta_rad": 0.0
+      },
+      "excessive": {
+        "success": false,
+        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "message": "movement_exceeds_provider_limits",
+        "achieved_x_m": 0.0,
+        "achieved_y_m": 0.0,
+        "achieved_theta_rad": 0.0
+      },
+      "non_finite": {
+        "success": false,
+        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "message": "request_contains_non_finite_value",
+        "achieved_x_m": 0.0,
+        "achieved_y_m": 0.0,
+        "achieved_theta_rad": 0.0
+      }
+    },
+    {
+      "name": "autonomous_life_guard",
+      "passed": true,
+      "response": {
+        "success": false,
+        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "message": "autonomous_state_disable_failed: rejected",
+        "achieved_x_m": 0.0,
+        "achieved_y_m": 0.0,
+        "achieved_theta_rad": 0.0
+      },
+      "backend_events": [
+        [
+          "autonomous",
+          false
+        ]
+      ]
+    },
+    {
+      "name": "single_flight",
+      "passed": true,
+      "busy": {
+        "success": false,
+        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "message": "provider_busy",
+        "achieved_x_m": 0.0,
+        "achieved_y_m": 0.0,
+        "achieved_theta_rad": 0.0
+      },
+      "first_response": {
+        "success": true,
+        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "message": "motion_completed",
+        "achieved_x_m": 0.2000000029802323,
+        "achieved_y_m": -1.3877787807814457e-17,
+        "achieved_theta_rad": 0.0
+      }
+    },
+    {
+      "name": "target_not_reached",
+      "passed": true,
+      "response": {
+        "success": false,
+        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "message": "motion_target_not_reached",
+        "achieved_x_m": 0.0,
+        "achieved_y_m": 0.0,
+        "achieved_theta_rad": 0.0
+      }
+    },
+    {
+      "name": "explicit_free",
+      "passed": true,
+      "running": {},
+      "odometry_subscription_count": 0
+    }
+  ],
+  "limits": [
+    "All robot services and odometry are simulated; no robot moves.",
+    "Timeout does not cancel an underlying NAOqi movement."
+  ],
+  "passed": true
+}

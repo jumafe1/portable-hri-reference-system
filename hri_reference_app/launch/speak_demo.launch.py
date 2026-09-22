@@ -1,5 +1,6 @@
 """Launch Capabilities2 and the portable YASMIN Speak application."""
 
+from importlib.util import find_spec
 from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
@@ -17,9 +18,23 @@ from launch_ros.actions import Node
 
 
 SUPPORTED_ROBOTS = {"nao": "/nao/say", "pepper": "/pepper/say"}
+YASMIN_PACKAGES = ("yasmin", "yasmin_ros")
+
+
+def require_yasmin(resolver=find_spec):
+    """Stop before launching ROS nodes when YASMIN is not installed."""
+    missing = [package for package in YASMIN_PACKAGES if resolver(package) is None]
+    if missing:
+        names = ", ".join(missing)
+        raise RuntimeError(
+            f"Missing Python modules: {names}. Install ros-jazzy-yasmin and "
+            "ros-jazzy-yasmin-ros, then source /opt/ros/jazzy/setup.bash "
+            "before the workspace overlay."
+        )
 
 
 def launch_setup(context):
+    require_yasmin()
     robot = LaunchConfiguration("robot").perform(context).strip().lower()
     if robot not in SUPPORTED_ROBOTS:
         supported = ", ".join(sorted(SUPPORTED_ROBOTS))

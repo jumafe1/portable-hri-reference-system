@@ -9,11 +9,21 @@ import rclpy
 from capabilities2_msgs.srv import EstablishBond, FreeCapability, UseCapability
 from hri_capability_interfaces.srv import Speak
 from rclpy.utilities import remove_ros_args
-import yasmin
-from yasmin import Blackboard, StateMachine
-from yasmin_ros import ServiceState, set_ros_loggers
-from yasmin_ros.basic_outcomes import ABORT, SUCCEED, TIMEOUT
-from yasmin_ros.yasmin_node import YasminNode
+
+try:
+    import yasmin
+    from yasmin import Blackboard, StateMachine
+    from yasmin_ros import ServiceState, set_ros_loggers
+    from yasmin_ros.basic_outcomes import ABORT, SUCCEED, TIMEOUT
+    from yasmin_ros.yasmin_node import YasminNode
+except ModuleNotFoundError as error:
+    if error.name and error.name.split(".")[0] in {"yasmin", "yasmin_ros"}:
+        raise SystemExit(
+            "YASMIN is not available in this Python environment. Install "
+            "ros-jazzy-yasmin and ros-jazzy-yasmin-ros, then source "
+            "/opt/ros/jazzy/setup.bash before the workspace overlay."
+        ) from None
+    raise
 
 
 CAPABILITY = "hri_capability_interfaces/Speak"

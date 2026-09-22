@@ -7,6 +7,10 @@ repositories:
     type: git
     url: https://github.com/SinfonIAUniandes/naoqi_utilities_msgs.git
     version: 00831e4c4814dd77c036940948d22a2c8f33f6ef
+  yolo_ros:
+    type: git
+    url: https://github.com/mgonzs13/yolo_ros.git
+    version: c6d29ce65da555b125517db6ac53729320422b2b
   portable-hri-interfaces:
     type: git
     url: https://github.com/jumafe1/portable-hri-interfaces.git

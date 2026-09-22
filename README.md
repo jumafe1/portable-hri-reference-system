@@ -2,6 +2,45 @@
 
 Integración y pruebas reproducibles de la arquitectura portable HRI sobre ROS 2.
 
+## Detección portable de personas
+
+`hri_capability_interfaces/DetectPeople` abstrae la detección 2D de personas.
+El proveedor `hri_yolo_providers/YoloDetectPeople` consume
+`/yolo/detections`, filtra la clase `person` y expone
+`/hri/detect_people`. La aplicación no depende de `yolo_msgs` ni del tópico de
+cámara de un robot específico.
+
+La prueba directa aceptada en NAO usó `yolov8n.pt` sobre CPU, recibió la cámara
+frontal aproximadamente a 4 Hz y publicó detecciones aproximadamente a 3 Hz.
+Se observaron personas con confianza 0,91–0,93 y un arreglo vacío al cubrir la
+cámara. Esta evidencia valida cámara y motor YOLO; no sustituye la prueba
+posterior a través de Capabilities2.
+
+La prueba local del proveedor usa mensajes YOLO simulados y no requiere robot:
+
+```bash
+colcon build --packages-up-to hri_yolo_providers --symlink-install
+source install/setup.bash
+python3 tests/capabilities_yolo_detect_people_probe.py
+```
+
+Comprueba datos ausentes, selección del proveedor, filtrado por clase y
+confianza, rechazo de valores inválidos, traducción del cuadro 2D, frame vacío,
+datos vencidos y liberación.
+`yolo_ros` es un proceso externo: Capabilities2 administra el adaptador, no la
+inferencia ni el driver de cámara.
+
+Con el driver del robot y `yolo_ros` publicando detecciones reales, ejecutar:
+
+```bash
+python3 tests/capabilities_yolo_detect_people_physical.py
+```
+
+La prueba espera una detección a través de `/hri/detect_people`, libera el
+proveedor y pide confirmar que había una persona visible. No debe aprobarse
+usando un publicador simulado: la evidencia física queda pendiente hasta
+ejecutar este comando con la cámara del robot.
+
 ## Aplicación portable con YASMIN
 
 `hri_reference_app` contiene la primera aplicación de referencia en Python. Su
@@ -26,7 +65,13 @@ sudo apt install ros-jazzy-yasmin ros-jazzy-yasmin-ros
 rosdep install --from-paths src --ignore-src -r -y
 colcon build --packages-up-to hri_reference_app --symlink-install
 source install/setup.bash
+python3 -c "import yasmin, yasmin_ros; print('YASMIN disponible')"
 ```
+
+La comprobación de importación debe ejecutarse en la misma terminal desde la
+que se iniciará la aplicación. Si falla, el paquete pudo compilar porque
+YASMIN es una dependencia de ejecución, pero la máquina de estados no podrá
+arrancar hasta instalarla y volver a cargar los entornos.
 
 Con el driver correspondiente ejecutándose en otra terminal y exponiendo
 `/nao/say` o `/pepper/say`, usar uno de estos comandos:

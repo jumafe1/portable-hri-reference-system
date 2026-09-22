@@ -1,0 +1,128 @@
+{
+  "started_utc": "2026-09-22T19:20:57.278583+00:00",
+  "provider": "hri_yolo_providers/YoloDetectPeople",
+  "checks": [
+    {
+      "name": "catalog",
+      "passed": true,
+      "interfaces": [
+        "hri_capability_interfaces/DetectPeople"
+      ],
+      "providers": [
+        "hri_yolo_providers/YoloDetectPeople"
+      ]
+    },
+    {
+      "name": "provider_selected",
+      "passed": true,
+      "running": {
+        "hri_capability_interfaces/DetectPeople": "hri_yolo_providers/YoloDetectPeople"
+      }
+    },
+    {
+      "name": "detections_unavailable",
+      "passed": true,
+      "response": {
+        "success": false,
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "message": "detections_unavailable",
+        "people": []
+      }
+    },
+    {
+      "name": "backend_subscription",
+      "passed": true,
+      "subscription_count": 1
+    },
+    {
+      "name": "person_filtered_and_translated",
+      "passed": true,
+      "response": {
+        "success": true,
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "message": "people_detected",
+        "people": [
+          {
+            "confidence": 0.91,
+            "tracking_id": "person-7",
+            "center_x": 205.8,
+            "center_y": 119.7,
+            "width": 228.3,
+            "height": 239.3
+          }
+        ]
+      }
+    },
+    {
+      "name": "caller_threshold",
+      "passed": true,
+      "response": {
+        "success": true,
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "message": "no_people",
+        "people": []
+      }
+    },
+    {
+      "name": "invalid_threshold",
+      "passed": true,
+      "response": {
+        "success": false,
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "message": "minimum_confidence_out_of_range",
+        "people": []
+      }
+    },
+    {
+      "name": "non_finite_threshold",
+      "passed": true,
+      "response": {
+        "success": false,
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "message": "request_contains_non_finite_value",
+        "people": []
+      }
+    },
+    {
+      "name": "non_finite_age",
+      "passed": true,
+      "response": {
+        "success": false,
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "message": "request_contains_non_finite_value",
+        "people": []
+      }
+    },
+    {
+      "name": "valid_empty_frame",
+      "passed": true,
+      "response": {
+        "success": true,
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "message": "no_people",
+        "people": []
+      }
+    },
+    {
+      "name": "stale_frame",
+      "passed": true,
+      "response": {
+        "success": false,
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "message": "detections_stale",
+        "people": []
+      }
+    },
+    {
+      "name": "explicit_free",
+      "passed": true,
+      "running": {},
+      "subscription_count": 0
+    }
+  ],
+  "limits": [
+    "The YOLO DetectionArray stream is simulated; no camera or robot is used.",
+    "The provider adapts detections but does not start or stop yolo_ros."
+  ],
+  "passed": true
+}

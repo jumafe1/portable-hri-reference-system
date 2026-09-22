@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-22T20:35:07.161149+00:00",
+  "started_utc": "2026-09-22T20:51:39.243851+00:00",
   "provider": "hri_naoqi_providers/NaoqiMoveRelative",
   "checks": [
     {
@@ -44,10 +44,6 @@
       },
       "backend_events": [
         [
-          "autonomous",
-          false
-        ],
-        [
           "move",
           [
             0.10000000149011612,
@@ -84,24 +80,6 @@
         "achieved_y_m": 0.0,
         "achieved_theta_rad": 0.0
       }
-    },
-    {
-      "name": "autonomous_life_guard",
-      "passed": true,
-      "response": {
-        "success": false,
-        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
-        "message": "autonomous_state_disable_failed: rejected",
-        "achieved_x_m": 0.0,
-        "achieved_y_m": 0.0,
-        "achieved_theta_rad": 0.0
-      },
-      "backend_events": [
-        [
-          "autonomous",
-          false
-        ]
-      ]
     },
     {
       "name": "single_flight",

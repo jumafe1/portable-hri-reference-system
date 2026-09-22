@@ -6,9 +6,9 @@ Integración y pruebas reproducibles de la arquitectura portable HRI sobre ROS 2
 
 `hri_capability_interfaces/MoveRelative` expresa un objetivo relativo en el
 plano mediante `x_m`, `y_m` y `theta_rad`. El proveedor
-`hri_naoqi_providers/NaoqiMoveRelative` desactiva primero la vida autónoma,
-delega en `/nao/move_to` y contrasta el desplazamiento alcanzado con
-`/nao/odom`. Los tres nombres internos pueden remapearse a las interfaces
+`hri_naoqi_providers/NaoqiMoveRelative` delega en `/nao/move_to` y contrasta el
+desplazamiento alcanzado con `/nao/odom`. El proveedor no lee ni modifica la
+vida autónoma. Los dos nombres internos pueden remapearse a las interfaces
 equivalentes de Pepper sin cambiar `/hri/move_relative`.
 
 La prueba local no requiere robot y usa servicios y odometría simulados:
@@ -21,10 +21,10 @@ source install/setup.bash
 python3 tests/capabilities_naoqi_move_relative_probe.py
 ```
 
-Comprueba catálogo y selección, odometría obligatoria, orden de desactivación
-de vida autónoma, traducción y verificación del objetivo, límites, valores no
-finitos, exclusión mutua, objetivo no alcanzado y liberación. El proveedor
-acepta inicialmente hasta `±0.5 m` en X, `±0.3 m` en Y y `±π/2 rad`.
+Comprueba catálogo y selección, odometría obligatoria, traducción y
+verificación del objetivo, límites, valores no finitos, exclusión mutua,
+objetivo no alcanzado y liberación. El proveedor acepta inicialmente hasta
+`±0.5 m` en X, `±0.3 m` en Y y `±π/2 rad`.
 
 Esta implementación no convierte un *timeout* en cancelación. El servicio
 SinfonIA disponible no expone `ALMotion.stopMove`; después de un *timeout* el

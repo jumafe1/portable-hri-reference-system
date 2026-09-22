@@ -20,7 +20,6 @@ from naoqi_utilities_msgs.srv import MoveTo
 from nav_msgs.msg import Odometry
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
-from std_srvs.srv import SetBool
 
 
 CAPABILITY = "hri_capability_interfaces/MoveRelative"
@@ -138,7 +137,6 @@ def main():
     pose = {"x": 1.0, "y": -0.5, "yaw": 0.4}
     events = []
     publish_odometry = threading.Event()
-    reject_autonomous_disable = threading.Event()
     slow_move_started = threading.Event()
 
     odometry_publisher = node.create_publisher(Odometry, "/nao/odom", 10)
@@ -157,12 +155,6 @@ def main():
         odometry_publisher.publish(message)
 
     odometry_timer = node.create_timer(0.05, publish_pose)
-
-    def fake_autonomous_state(request, response):
-        events.append(("autonomous", request.data))
-        response.success = not reject_autonomous_disable.is_set()
-        response.message = "disabled" if response.success else "rejected"
-        return response
 
     def fake_move(request, response):
         target = (
@@ -187,9 +179,6 @@ def main():
             pose["yaw"] = normalize_angle(initial_yaw + target[2])
         return response
 
-    autonomous_service = node.create_service(
-        SetBool, "/nao/set_autonomous_state", fake_autonomous_state
-    )
     move_service = node.create_service(MoveTo, "/nao/move_to", fake_move)
 
     with tempfile.TemporaryDirectory(prefix="portable-hri-motion-") as temporary:
@@ -286,8 +275,8 @@ def main():
                     and abs(moved.achieved_x_m - 0.1) < 0.01
                     and abs(moved.achieved_y_m - 0.05) < 0.01
                     and abs(moved.achieved_theta_rad - 0.2) < 0.01
-                    and events[0] == ("autonomous", False)
-                    and events[1][0] == "move",
+                    and len(events) == 1
+                    and events[0][0] == "move",
                     response=response_dict(moved),
                     backend_events=list(events),
                 )
@@ -324,26 +313,6 @@ def main():
                     excessive=response_dict(excessive),
                     non_finite=response_dict(non_finite),
                 )
-
-                reject_autonomous_disable.set()
-                events.clear()
-                autonomous_failure = probe.call(
-                    MoveRelative,
-                    "/hri/move_relative",
-                    x_m=0.1,
-                    y_m=0.0,
-                    theta_rad=0.0,
-                )
-                probe.check(
-                    "autonomous_life_guard",
-                    not autonomous_failure.success
-                    and autonomous_failure.message
-                    == "autonomous_state_disable_failed: rejected"
-                    and events == [("autonomous", False)],
-                    response=response_dict(autonomous_failure),
-                    backend_events=list(events),
-                )
-                reject_autonomous_disable.clear()
 
                 events.clear()
                 slow_result = {}
@@ -441,7 +410,6 @@ def main():
     )
     print(json.dumps(results, indent=2, ensure_ascii=False))
 
-    node.destroy_service(autonomous_service)
     node.destroy_service(move_service)
     node.destroy_timer(odometry_timer)
     executor.shutdown()

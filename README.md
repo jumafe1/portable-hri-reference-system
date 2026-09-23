@@ -54,9 +54,11 @@ ejecutarse con espacio libre, supervisión directa y acceso al botón físico.
 
 `hri_capability_interfaces/DetectPeople` abstrae la detección 2D de personas.
 El proveedor `hri_yolo_providers/YoloDetectPeople` consume
-`/yolo/detections`, filtra la clase `person` y expone
-`/hri/detect_people`. La aplicación no depende de `yolo_msgs` ni del tópico de
-cámara de un robot específico.
+`/yolo/detections`, filtra la clase `person` y publica el flujo portable
+`/hri/people`; también conserva `/hri/detect_people` para consultas puntuales.
+La aplicación no depende de `yolo_msgs` ni del tópico de cámara de un robot
+específico. La imagen anotada `/yolo/dbg_image` se usa solamente para observar
+la inferencia, no como contrato de la arquitectura.
 
 La prueba directa aceptada en NAO usó `yolov8n.pt` sobre CPU, recibió la cámara
 frontal aproximadamente a 4 Hz y publicó detecciones aproximadamente a 3 Hz.
@@ -72,9 +74,9 @@ source install/setup.bash
 python3 tests/capabilities_yolo_detect_people_probe.py
 ```
 
-Comprueba datos ausentes, selección del proveedor, filtrado por clase y
-confianza, rechazo de valores inválidos, traducción del cuadro 2D, frame vacío,
-datos vencidos y liberación.
+Comprueba datos ausentes, selección del proveedor, disponibilidad del tópico,
+filtrado por clase y confianza, rechazo de valores inválidos, traducción del
+cuadro 2D, flujo continuo, frame vacío, datos vencidos y liberación.
 `yolo_ros` es un proceso externo: Capabilities2 administra el adaptador, no la
 inferencia ni el driver de cámara.
 

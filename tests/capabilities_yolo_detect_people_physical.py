@@ -16,6 +16,7 @@ import time
 import rclpy
 from capabilities2_msgs import srv as capabilities_srv
 from capabilities2_msgs.msg import CapabilitySpec
+from hri_capability_interfaces.msg import PersonDetection2DArray
 from hri_capability_interfaces.srv import DetectPeople
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
@@ -46,6 +47,28 @@ def wait_for_publishers(node, topic, timeout_sec):
             return True
         time.sleep(0.1)
     return False
+
+
+def people_frame_dict(frame):
+    return {
+        "stamp": {
+            "sec": frame.header.stamp.sec,
+            "nanosec": frame.header.stamp.nanosec,
+        },
+        "frame_id": frame.header.frame_id,
+        "provider": frame.provider,
+        "people": [
+            {
+                "confidence": person.confidence,
+                "tracking_id": person.tracking_id,
+                "center_x": person.center_x,
+                "center_y": person.center_y,
+                "width": person.width,
+                "height": person.height,
+            }
+            for person in frame.people
+        ],
+    }
 
 
 def main():
@@ -92,6 +115,17 @@ def main():
     executor_thread = threading.Thread(target=executor.spin, daemon=True)
     executor_thread.start()
     probe = Probe(node)
+    people_lock = threading.Lock()
+    latest_people_frame = None
+
+    def people_callback(frame):
+        nonlocal latest_people_frame
+        with people_lock:
+            latest_people_frame = frame
+
+    people_subscription = node.create_subscription(
+        PersonDetection2DArray, "/hri/people", people_callback, 10
+    )
 
     if not wait_for_publishers(node, "/yolo/detections", 5.0):
         executor.shutdown()
@@ -144,24 +178,41 @@ def main():
                 if not probe.wait_for_running({CAPABILITY: PROVIDER}):
                     raise RuntimeError("Capabilities2 did not activate YoloDetectPeople.")
 
+                if not wait_for_publishers(node, "/hri/people", 5.0):
+                    raise RuntimeError("YoloDetectPeople did not publish /hri/people.")
+
                 deadline = time.monotonic() + args.timeout
                 while time.monotonic() < deadline:
-                    response = probe.call(
-                        DetectPeople,
-                        "/hri/detect_people",
-                        minimum_confidence=args.minimum_confidence,
-                        maximum_age_sec=args.maximum_age,
-                    )
-                    results["last_response"] = response_dict(response)
-                    if response.success and response.people:
+                    with people_lock:
+                        frame = latest_people_frame
+                    if frame is not None:
+                        results["last_people_frame"] = people_frame_dict(frame)
+                    people = [
+                        person
+                        for person in frame.people
+                        if person.confidence >= args.minimum_confidence
+                    ] if frame is not None else []
+                    if people:
                         results["technical_success"] = True
-                        results["detections"] = response_dict(response)["people"]
+                        results["detections"] = [
+                            {
+                                "confidence": person.confidence,
+                                "tracking_id": person.tracking_id,
+                                "center_x": person.center_x,
+                                "center_y": person.center_y,
+                                "width": person.width,
+                                "height": person.height,
+                            }
+                            for person in people
+                        ]
+                        response = probe.call(
+                            DetectPeople,
+                            "/hri/detect_people",
+                            minimum_confidence=args.minimum_confidence,
+                            maximum_age_sec=args.maximum_age,
+                        )
+                        results["point_query"] = response_dict(response)
                         break
-                    if not response.success and response.message not in {
-                        "detections_unavailable",
-                        "detections_stale",
-                    }:
-                        raise RuntimeError(response.message)
                     time.sleep(0.25)
             except Exception as error:
                 results["execution_error"] = str(error)
@@ -208,6 +259,7 @@ def main():
 
     executor.shutdown()
     executor_thread.join(timeout=2)
+    node.destroy_subscription(people_subscription)
     node.destroy_node()
     rclpy.shutdown()
     if not results["passed"]:

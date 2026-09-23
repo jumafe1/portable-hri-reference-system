@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 import rclpy
 from capabilities2_msgs import srv as capabilities_srv
 from capabilities2_msgs.msg import CapabilitySpec
+from hri_capability_interfaces.msg import PersonDetection2DArray
 from hri_capability_interfaces.srv import DetectPeople
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
@@ -114,6 +115,28 @@ def response_dict(response):
     }
 
 
+def people_frame_dict(frame):
+    return {
+        "stamp": {
+            "sec": frame.header.stamp.sec,
+            "nanosec": frame.header.stamp.nanosec,
+        },
+        "frame_id": frame.header.frame_id,
+        "provider": frame.provider,
+        "people": [
+            {
+                "confidence": person.confidence,
+                "tracking_id": person.tracking_id,
+                "center_x": person.center_x,
+                "center_y": person.center_y,
+                "width": person.width,
+                "height": person.height,
+            }
+            for person in frame.people
+        ],
+    }
+
+
 def main():
     repository = Path(__file__).resolve().parents[1]
     workspace = repository.parent
@@ -147,6 +170,33 @@ def main():
     executor_thread = threading.Thread(target=executor.spin, daemon=True)
     executor_thread.start()
     publisher = node.create_publisher(DetectionArray, "/yolo/detections", 10)
+    people_frames = []
+    people_lock = threading.Lock()
+
+    def people_callback(frame):
+        with people_lock:
+            people_frames.append(frame)
+
+    people_subscription = node.create_subscription(
+        PersonDetection2DArray, "/hri/people", people_callback, 10
+    )
+
+    def people_frame_count():
+        with people_lock:
+            return len(people_frames)
+
+    def latest_people_frame():
+        with people_lock:
+            return people_frames[-1] if people_frames else None
+
+    def wait_for_people_frame(after_count, timeout_sec=5.0):
+        deadline = time.monotonic() + timeout_sec
+        while time.monotonic() < deadline:
+            if people_frame_count() > after_count:
+                return latest_people_frame()
+            time.sleep(0.05)
+        return None
+
     probe = Probe(node)
 
     with tempfile.TemporaryDirectory(prefix="portable-hri-yolo-") as temporary:
@@ -209,6 +259,18 @@ def main():
                     running=probe.running(),
                 )
 
+                deadline = time.monotonic() + 5.0
+                while (
+                    not node.get_publishers_info_by_topic("/hri/people")
+                    and time.monotonic() < deadline
+                ):
+                    time.sleep(0.05)
+                probe.check(
+                    "portable_topic_available",
+                    len(node.get_publishers_info_by_topic("/hri/people")) == 1,
+                    publisher_count=len(node.get_publishers_info_by_topic("/hri/people")),
+                )
+
                 unavailable = probe.call(
                     DetectPeople,
                     "/hri/detect_people",
@@ -232,14 +294,30 @@ def main():
                 )
 
                 frame = DetectionArray()
+                frame.header.stamp = node.get_clock().now().to_msg()
+                frame.header.frame_id = "simulated_camera"
                 frame.detections = [
                     detection("person", 0.91, "person-7", 205.8, 119.7, 228.3, 239.3),
                     detection("chair", 0.99, "chair-2", 50.0, 60.0, 40.0, 80.0),
                     detection("person", 0.40, "person-low", 10.0, 20.0, 30.0, 40.0),
                     detection("person", 0.99, "person-invalid", math.nan, 20.0, 30.0, 40.0),
                 ]
+                previous_people_frame_count = people_frame_count()
                 publisher.publish(frame)
                 time.sleep(0.25)
+
+                streamed = wait_for_people_frame(previous_people_frame_count)
+                streamed_person = streamed.people[0] if streamed and streamed.people else None
+                probe.check(
+                    "continuous_people_topic",
+                    streamed is not None
+                    and streamed.header == frame.header
+                    and streamed.provider == PROVIDER
+                    and len(streamed.people) == 1
+                    and streamed_person.tracking_id == "person-7"
+                    and abs(streamed_person.confidence - 0.91) < 1e-6,
+                    frame=people_frame_dict(streamed) if streamed else None,
+                )
 
                 detected = probe.call(
                     DetectPeople,
@@ -314,8 +392,21 @@ def main():
                     response=response_dict(non_finite_age),
                 )
 
-                publisher.publish(DetectionArray())
+                previous_people_frame_count = people_frame_count()
+                empty_frame = DetectionArray()
+                empty_frame.header.stamp = node.get_clock().now().to_msg()
+                empty_frame.header.frame_id = "simulated_camera"
+                publisher.publish(empty_frame)
                 time.sleep(0.25)
+                streamed_empty = wait_for_people_frame(previous_people_frame_count)
+                probe.check(
+                    "continuous_empty_frame",
+                    streamed_empty is not None
+                    and streamed_empty.header == empty_frame.header
+                    and streamed_empty.provider == PROVIDER
+                    and not streamed_empty.people,
+                    frame=people_frame_dict(streamed_empty) if streamed_empty else None,
+                )
                 empty = probe.call(
                     DetectPeople,
                     "/hri/detect_people",
@@ -351,15 +442,28 @@ def main():
                 freed = probe.wait_for_running({})
                 deadline = time.monotonic() + 5.0
                 while (
-                    publisher.get_subscription_count() != 0
+                    (
+                        publisher.get_subscription_count() != 0
+                        or node.get_publishers_info_by_topic("/hri/people")
+                    )
                     and time.monotonic() < deadline
                 ):
                     time.sleep(0.05)
+                previous_people_frame_count = people_frame_count()
+                publisher.publish(frame)
+                time.sleep(0.25)
                 probe.check(
                     "explicit_free",
-                    freed and publisher.get_subscription_count() == 0,
+                    freed
+                    and publisher.get_subscription_count() == 0
+                    and not node.get_publishers_info_by_topic("/hri/people")
+                    and people_frame_count() == previous_people_frame_count,
                     running=probe.running(),
                     subscription_count=publisher.get_subscription_count(),
+                    portable_publisher_count=len(
+                        node.get_publishers_info_by_topic("/hri/people")
+                    ),
+                    portable_frame_count=people_frame_count(),
                 )
             except Exception as error:
                 results["execution_error"] = str(error)
@@ -385,6 +489,7 @@ def main():
 
     executor.shutdown()
     executor_thread.join(timeout=2)
+    node.destroy_subscription(people_subscription)
     node.destroy_node()
     rclpy.shutdown()
     if not results["passed"]:

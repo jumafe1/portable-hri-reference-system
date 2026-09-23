@@ -116,7 +116,7 @@ def build_state_machine():
     return state_machine
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="Request portable speech through YASMIN and Capabilities2."
     )
@@ -127,11 +127,12 @@ def parse_args():
     )
     parser.add_argument("--language", default="Spanish")
     parser.add_argument("--provider", default=DEFAULT_PROVIDER)
-    return parser.parse_args(remove_ros_args(args=sys.argv)[1:])
+    return parser.parse_args(
+        remove_ros_args(args=sys.argv)[1:] if argv is None else argv
+    )
 
 
-def main():
-    args = parse_args()
+def run(args):
     if not args.text.strip():
         raise SystemExit("The speech text cannot be empty.")
 
@@ -173,6 +174,10 @@ def main():
         result["final_state"] = state_machine.get_current_state()
     print(json.dumps(result, ensure_ascii=False))
     return 0 if outcome == APP_SUCCEEDED else 1
+
+
+def main():
+    return run(parse_args())
 
 
 if __name__ == "__main__":

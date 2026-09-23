@@ -153,7 +153,7 @@ def build_state_machine():
     return state_machine
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="Wait for a portable person detection through YASMIN and Capabilities2."
     )
@@ -161,11 +161,12 @@ def parse_args():
     parser.add_argument("--provider", default=DEFAULT_PROVIDER)
     parser.add_argument("--minimum-confidence", type=float, default=0.5)
     parser.add_argument("--timeout", type=float, default=20.0)
-    return parser.parse_args(remove_ros_args(args=sys.argv)[1:])
+    return parser.parse_args(
+        remove_ros_args(args=sys.argv)[1:] if argv is None else argv
+    )
 
 
-def main():
-    args = parse_args()
+def run(args):
     if not 0.5 <= args.minimum_confidence <= 1.0:
         raise SystemExit("--minimum-confidence must be in the [0.5, 1.0] range.")
     if args.timeout <= 0.0:
@@ -214,6 +215,10 @@ def main():
         result["final_state"] = state_machine.get_current_state()
     print(json.dumps(result, ensure_ascii=False))
     return 0 if outcome in {APP_SUCCEEDED, APP_NO_PERSON} else 1
+
+
+def main():
+    return run(parse_args())
 
 
 if __name__ == "__main__":

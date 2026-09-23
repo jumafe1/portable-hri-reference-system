@@ -4,6 +4,12 @@ project(hri_reference_app)
 find_package(ament_cmake REQUIRED)
 
 install(
+  PROGRAMS scripts/hri_app.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME hri_app
+)
+
+install(
   PROGRAMS scripts/speak_demo.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME speak_demo
@@ -22,7 +28,11 @@ install(
 )
 
 install(
-  FILES scripts/capability_lifecycle.py
+  FILES
+    scripts/capability_lifecycle.py
+    scripts/speak_demo.py
+    scripts/people_demo.py
+    scripts/move_demo.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

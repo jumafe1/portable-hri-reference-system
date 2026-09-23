@@ -162,7 +162,7 @@ def build_state_machine():
     return state_machine
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="Request a portable relative movement through YASMIN."
     )
@@ -172,7 +172,9 @@ def parse_args():
     parser.add_argument("--theta", type=float, required=True, help="Yaw radians.")
     parser.add_argument("--confirm", required=True, help='Must be "MOVER".')
     parser.add_argument("--provider", default=DEFAULT_PROVIDER)
-    args = parser.parse_args(remove_ros_args(args=sys.argv)[1:])
+    args = parser.parse_args(
+        remove_ros_args(args=sys.argv)[1:] if argv is None else argv
+    )
     if args.confirm != "MOVER":
         parser.error('Movement requires --confirm MOVER.')
     values = (args.x, args.y, args.theta)
@@ -189,8 +191,7 @@ def parse_args():
     return args
 
 
-def main():
-    args = parse_args()
+def run(args):
     rclpy.init()
     set_ros_loggers()
     blackboard = Blackboard()
@@ -232,6 +233,10 @@ def main():
     }
     print(json.dumps(result, ensure_ascii=False))
     return 0 if outcome == APP_SUCCEEDED else 1
+
+
+def main():
+    return run(parse_args())
 
 
 if __name__ == "__main__":

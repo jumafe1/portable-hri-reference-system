@@ -161,20 +161,20 @@ física conservada; la prueba física aprobada corresponde al flujo continuo
 
 ## Aplicación portable con YASMIN
 
-`hri_reference_app` contiene la primera aplicación de referencia en Python. Su
-máquina de estados YASMIN establece un vínculo con Capabilities2, solicita el
-contrato `hri_capability_interfaces/Speak`, ejecuta `/hri/speak` y libera la
-capacidad tanto si la voz termina correctamente como si el servicio del robot
-falla.
+`hri_app` es una única entrada Python/YASMIN con tres modos independientes:
+`speak`, `detect_people` y `move_relative`. Selecciona en el mismo proceso la
+máquina de estados del modo solicitado; cada una establece el vínculo con
+Capabilities2, adquiere su contrato, lo usa y libera la capacidad. El servidor
+registra los tres proveedores, pero una ejecución activa solo el necesario.
+Los ejecutables antiguos `speak_demo`, `people_demo` y `move_demo` se conservan
+como comandos de regresión; no son tres aplicaciones finales distintas.
 
-La aplicación no llama directamente a `/nao/say` ni a `/pepper/say`. El mismo
-flujo se ejecuta en ambas plataformas y el `launch` limita la diferencia al
-servicio ROS 2 que usa el proveedor C++ existente:
-
-```text
-YASMIN -> Speak -> Capabilities2 -> NaoSpeakRunner -> /nao/say
-                                            \-----> /pepper/say (remapeado)
-```
+La nueva entrada no encadena aún detección, voz y movimiento. Su portabilidad
+se apoya en los contratos `/hri/speak`, `/hri/people` y `/hri/move_relative`,
+sin llamar desde YASMIN a servicios específicos de NAO o Pepper. El `launch`
+remapea esos servicios para el robot elegido. `detect_people` termina al hallar
+una persona o vencer el plazo; la imagen continua con rectángulos sigue
+disponible aparte en `/yolo/dbg_image` cuando YOLO está activo.
 
 Instalar dependencias, compilar y cargar el overlay:
 
@@ -191,23 +191,43 @@ que se iniciará la aplicación. Si falla, el paquete pudo compilar porque
 YASMIN es una dependencia de ejecución, pero la máquina de estados no podrá
 arrancar hasta instalarla y volver a cargar los entornos.
 
-Con el driver correspondiente ejecutándose en otra terminal y exponiendo
-`/nao/say` o `/pepper/say`, usar uno de estos comandos:
+Con el driver del robot ya ejecutándose en otra terminal, estos comandos usan
+la **misma aplicación**. Sustituir `robot:=nao` por `robot:=pepper` para probar
+la otra plataforma. El modo de percepción requiere además `yolo_ros` ya
+recibiendo la cámara del robot y publicando `/yolo/detections`:
 
 ```bash
-ros2 launch hri_reference_app speak_demo.launch.py \
-  robot:=nao \
-  text:="Hola, esta es una aplicación portable en NAO."
-
-ros2 launch hri_reference_app speak_demo.launch.py \
-  robot:=pepper \
-  text:="Hola, esta es una aplicación portable en Pepper."
+ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=speak text:="Hola desde la aplicación HRI."
+ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=detect_people timeout:=20.0
 ```
 
-El resultado final se imprime como JSON. `outcome` debe ser
-`application_succeeded` y `released` debe ser `true`. La ruta Pepper todavía
-reutiliza `hri_naoqi_providers/NaoSpeak` mediante remapeo; no representa un
-proveedor Pepper definitivo.
+Solo con espacio libre, supervisión física y el estado mecánico del robot
+comprobado, ejecutar el modo de movimiento; `confirm:=MOVER` es obligatorio y
+el objetivo se limita a `|x|≤0.5 m`, `|y|≤0.3 m`, `|θ|≤π/2 rad`:
+
+```bash
+ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=move_relative x:=0.1 y:=0.0 theta:=0.0 confirm:=MOVER
+```
+
+El JSON final debe indicar `application_succeeded` y `released: true`. En
+`detect_people`, `application_no_person` indica un plazo vencido sin detección,
+no un fallo del proveedor. El modo de movimiento debe además reportar
+`motion_completed`; la odometría es estimada, no una medición externa exacta.
+El `launch` no inicia ni el driver ni YOLO. El proveedor `NaoSpeak` y el de
+movimiento se reutilizan entre ambos robots mediante remapeos; no se crean
+proveedores Pepper independientes si la interfaz ya es compatible.
+
+La regresión sin hardware se ejecuta desde la raíz de este repositorio, con
+los overlays ROS 2 y del proyecto cargados:
+
+```bash
+ROS_DOMAIN_ID=171 python3 tests/unified_hri_app_probe.py
+```
+
+Esta prueba comprueba las seis combinaciones de robot y modo con servicios y
+mensajes simulados; **no acredita** que la nueva entrada haya corrido aún en
+los robots físicos. No ejecutarla a la vez que el sistema real en el mismo
+dominio ROS.
 
 ## Prueba `Speak` con Capabilities2
 

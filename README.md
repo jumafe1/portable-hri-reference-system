@@ -50,6 +50,40 @@ odometría, libera la capacidad y pide confirmación visual. No modifica la vida
 autónoma ni usa `cmd_vel`. Debido a la ausencia de cancelación remota, debe
 ejecutarse con espacio libre, supervisión directa y acceso al botón físico.
 
+### Estado YASMIN `MoveRelative`
+
+`move_demo` usa el mismo contrato y proveedor desde YASMIN. Recibe `x` y `y`
+en metros y `theta` en radianes; solicita la capacidad mediante Capabilities2,
+envía una sola orden efectiva a `move_to`, conserva el resultado estimado por
+odometría y libera la capacidad. Puede reintentar durante tres segundos solo si
+el proveedor responde `odometry_unavailable_before_motion`, rechazo que ocurre
+antes de llamar a `move_to`. La espera del resultado es de 35 segundos porque
+el proveedor admite hasta 30 segundos para la operación.
+
+La prueba sin robot verifica NAO y Pepper simulados, objetivo no alcanzado,
+odometría ausente, validación de argumentos y liberación:
+
+```bash
+colcon build --packages-up-to hri_reference_app --symlink-install
+source install/setup.bash
+python3 tests/yasmin_move_demo_probe.py
+```
+
+Con el driver del robot activo y `/nao/odom` o `/pepper/odom` publicando, la
+primera prueba física supervisada puede solicitar 10 cm hacia adelante. El
+`launch` exige valores explícitos y `confirm:=MOVER` antes de iniciar nodos:
+
+```bash
+ros2 launch hri_reference_app move_demo.launch.py robot:=nao x:=0.1 y:=0.0 theta:=0.0 confirm:=MOVER
+# Para Pepper: sustituir robot:=nao por robot:=pepper.
+```
+
+Un resultado aprobado debe contener `application_succeeded`,
+`message: "motion_completed"`, los campos `achieved` y `released: true`.
+Esta aplicación no modifica la vida autónoma. La liberación de Capabilities2
+no detiene un movimiento NAOqi en curso; el operador debe mantener la
+supervisión y acceso al botón físico durante la prueba.
+
 ## Detección portable de personas
 
 `hri_capability_interfaces/DetectPeople` abstrae la detección 2D de personas.

@@ -16,6 +16,12 @@ install(
 )
 
 install(
+  PROGRAMS scripts/move_demo.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME move_demo
+)
+
+install(
   FILES scripts/capability_lifecycle.py
   DESTINATION lib/${PROJECT_NAME}
 )

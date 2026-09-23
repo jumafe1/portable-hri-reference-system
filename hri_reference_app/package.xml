@@ -14,6 +14,7 @@
   <exec_depend>capabilities2_server</exec_depend>
   <exec_depend>hri_capability_interfaces</exec_depend>
   <exec_depend>hri_naoqi_providers</exec_depend>
+  <exec_depend>hri_yolo_providers</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>rclpy</exec_depend>

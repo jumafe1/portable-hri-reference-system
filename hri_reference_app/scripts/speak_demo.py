@@ -6,9 +6,15 @@ import json
 import sys
 
 import rclpy
-from capabilities2_msgs.srv import EstablishBond, FreeCapability, UseCapability
 from hri_capability_interfaces.srv import Speak
 from rclpy.utilities import remove_ros_args
+
+from capability_lifecycle import (
+    EstablishBondState,
+    FreeCapabilityState,
+    UseCapabilityState,
+    service_options,
+)
 
 try:
     import yasmin
@@ -30,55 +36,6 @@ CAPABILITY = "hri_capability_interfaces/Speak"
 DEFAULT_PROVIDER = "hri_naoqi_providers/NaoSpeak"
 APP_SUCCEEDED = "application_succeeded"
 APP_FAILED = "application_failed"
-SERVICE_WAIT_SECONDS = 1.0
-SERVICE_RESPONSE_SECONDS = 10.0
-SERVICE_RETRIES = 10
-
-
-def service_options():
-    """Return bounded waits shared by every ROS service state."""
-    return {
-        "wait_timeout": SERVICE_WAIT_SECONDS,
-        "response_timeout": SERVICE_RESPONSE_SECONDS,
-        "maximum_retry": SERVICE_RETRIES,
-    }
-
-
-class EstablishBondState(ServiceState):
-    def __init__(self):
-        super().__init__(
-            EstablishBond,
-            "/capabilities/establish_bond",
-            lambda _: EstablishBond.Request(),
-            response_handler=self.handle_response,
-            **service_options(),
-        )
-
-    @staticmethod
-    def handle_response(blackboard, response):
-        if not response.bond_id:
-            blackboard["message"] = "capabilities2_returned_empty_bond"
-            return ABORT
-        blackboard["bond_id"] = response.bond_id
-        return SUCCEED
-
-
-class UseSpeakState(ServiceState):
-    def __init__(self):
-        super().__init__(
-            UseCapability,
-            "/capabilities/use_capability",
-            self.create_request,
-            **service_options(),
-        )
-
-    @staticmethod
-    def create_request(blackboard):
-        return UseCapability.Request(
-            capability=CAPABILITY,
-            preferred_provider=blackboard["preferred_provider"],
-            bond_id=blackboard["bond_id"],
-        )
 
 
 class SpeakState(ServiceState):
@@ -105,29 +62,6 @@ class SpeakState(ServiceState):
         return SUCCEED if response.success else ABORT
 
 
-class FreeSpeakState(ServiceState):
-    def __init__(self):
-        super().__init__(
-            FreeCapability,
-            "/capabilities/free_capability",
-            self.create_request,
-            response_handler=self.handle_response,
-            **service_options(),
-        )
-
-    @staticmethod
-    def create_request(blackboard):
-        return FreeCapability.Request(
-            capability=CAPABILITY,
-            bond_id=blackboard["bond_id"],
-        )
-
-    @staticmethod
-    def handle_response(blackboard, _response):
-        blackboard["released"] = True
-        return SUCCEED
-
-
 def build_state_machine():
     """Build a finite state machine that always releases an acquired capability."""
     state_machine = StateMachine(
@@ -145,7 +79,7 @@ def build_state_machine():
     )
     state_machine.add_state(
         "USE_SPEAK",
-        UseSpeakState(),
+        UseCapabilityState(),
         transitions={
             SUCCEED: "SPEAK",
             ABORT: "FREE_AFTER_FAILURE",
@@ -163,7 +97,7 @@ def build_state_machine():
     )
     state_machine.add_state(
         "FREE_AFTER_SUCCESS",
-        FreeSpeakState(),
+        FreeCapabilityState(),
         transitions={
             SUCCEED: APP_SUCCEEDED,
             ABORT: APP_FAILED,
@@ -172,7 +106,7 @@ def build_state_machine():
     )
     state_machine.add_state(
         "FREE_AFTER_FAILURE",
-        FreeSpeakState(),
+        FreeCapabilityState(),
         transitions={
             SUCCEED: APP_FAILED,
             ABORT: APP_FAILED,
@@ -206,6 +140,7 @@ def main():
     blackboard = Blackboard()
     blackboard["text"] = args.text
     blackboard["language"] = args.language
+    blackboard["capability"] = CAPABILITY
     blackboard["preferred_provider"] = args.provider
     blackboard["released"] = False
 

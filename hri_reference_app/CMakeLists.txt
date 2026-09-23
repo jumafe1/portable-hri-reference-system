@@ -10,6 +10,17 @@ install(
 )
 
 install(
+  PROGRAMS scripts/people_demo.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME people_demo
+)
+
+install(
+  FILES scripts/capability_lifecycle.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(
   DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
 )

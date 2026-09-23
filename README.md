@@ -80,6 +80,36 @@ cuadro 2D, flujo continuo, frame vacío, datos vencidos y liberación.
 `yolo_ros` es un proceso externo: Capabilities2 administra el adaptador, no la
 inferencia ni el driver de cámara.
 
+### Estado YASMIN `DetectPeople`
+
+`people_demo` adquiere `DetectPeople` mediante Capabilities2, observa el tópico
+portable `/hri/people` hasta encontrar una persona o agotar el tiempo y libera
+la capacidad en ambos casos. El campo `robot` documenta la plataforma de la
+prueba; la cámara que procesa YOLO se selecciona al iniciar `yolo_ros`.
+
+La prueba sin robot publica detecciones YOLO simuladas y comprueba los casos de
+persona presente y frames vacíos, además de la liberación del proveedor:
+
+```bash
+colcon build --packages-up-to hri_reference_app --symlink-install
+source install/setup.bash
+python3 tests/yasmin_people_demo_probe.py
+```
+
+Para probarlo físicamente, iniciar en terminales separadas el driver del robot
+y `yolo_ros` con `input_image_topic:=/nao/camera/front/image_raw` o
+`input_image_topic:=/pepper/camera/front/image_raw`. Después ejecutar:
+
+```bash
+ros2 launch hri_reference_app people_demo.launch.py robot:=nao timeout:=20.0
+# Para Pepper: sustituir robot:=nao por robot:=pepper.
+```
+
+Si aparece una persona, el JSON final debe indicar `application_succeeded`,
+una lista `people` no vacía y `released: true`. Sin personas debe indicar
+`application_no_person` y `released: true`. La visualización anotada permanece
+disponible en `/yolo/dbg_image`, pero no forma parte del contrato portable.
+
 Con el driver del robot y `yolo_ros` publicando detecciones reales, ejecutar:
 
 ```bash

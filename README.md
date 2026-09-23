@@ -109,6 +109,9 @@ Si aparece una persona, el JSON final debe indicar `application_succeeded`,
 una lista `people` no vacía y `released: true`. Sin personas debe indicar
 `application_no_person` y `released: true`. La visualización anotada permanece
 disponible en `/yolo/dbg_image`, pero no forma parte del contrato portable.
+El autor completó este recorrido físico con NAO y Pepper. La salida conservada
+de NAO reportó `application_succeeded`, una persona y `released: true`; la
+ejecución de Pepper fue confirmada por el autor sin compartir su JSON.
 
 Con el driver del robot y `yolo_ros` publicando detecciones reales, ejecutar:
 
@@ -118,8 +121,9 @@ python3 tests/capabilities_yolo_detect_people_physical.py
 
 La prueba espera una detección a través de `/hri/detect_people`, libera el
 proveedor y pide confirmar que había una persona visible. No debe aprobarse
-usando un publicador simulado: la evidencia física queda pendiente hasta
-ejecutar este comando con la cámara del robot.
+usando un publicador simulado. Este probe puntual sigue sin una ejecución
+física conservada; la prueba física aprobada corresponde al flujo continuo
+`people_demo` descrito arriba.
 
 ## Aplicación portable con YASMIN
 

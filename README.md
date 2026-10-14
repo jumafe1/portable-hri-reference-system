@@ -2,6 +2,15 @@
 
 Integración y pruebas reproducibles de la arquitectura portable HRI sobre ROS 2.
 
+## Velocidad continua portable
+
+`hri_app` añade `mode:=move_velocity`: flujo `Twist` mediante el contrato
+`MoveVelocity` y el proveedor `NaoqiMoveVelocity`. Incluye watchdog de entrada,
+límites y exclusión local con `MoveRelative`; no modifica vida autónoma ni
+implementa seguimiento de personas. La prueba física de este incremento está
+pendiente. Preparación, comandos NAO, arquitectura y límites de la parada en
+[MOVE_VELOCITY.md](MOVE_VELOCITY.md).
+
 ## Desplazamiento relativo portable
 
 `hri_capability_interfaces/MoveRelative` expresa un objetivo relativo en el
@@ -28,7 +37,10 @@ objetivo no alcanzado y liberación. El proveedor acepta inicialmente hasta
 
 Esta implementación no convierte un *timeout* en cancelación. El servicio
 SinfonIA disponible no expone `ALMotion.stopMove`; después de un *timeout* el
-proveedor bloquea nuevas órdenes hasta ser liberado y reiniciado. Por esta
+proveedor bloquea nuevas órdenes y conserva el bloqueo local del robot hasta
+que termine el servidor. Lo mismo ocurre si se libera una orden pendiente o
+no puede verificarse su resultado. Antes de reiniciar hay que confirmar
+físicamente que el robot está detenido. Por esta
 razón, cualquier prueba física debe limitarse a una orden pequeña, despejada y
 supervisada; no debe interpretarse el *timeout* como una orden de parada.
 

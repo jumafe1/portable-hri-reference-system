@@ -2,6 +2,7 @@
 """One portable YASMIN application with independently selectable capabilities."""
 
 import argparse
+import importlib
 import sys
 
 from rclpy.utilities import remove_ros_args
@@ -15,6 +16,7 @@ MODES = {
     "speak": speak_demo,
     "detect_people": people_demo,
     "move_relative": move_demo,
+    "move_velocity": "velocity_mode",
 }
 
 
@@ -27,6 +29,8 @@ def main():
     selector.add_argument("--mode", choices=tuple(MODES), required=True)
     selected, mode_args = selector.parse_known_args(ros_free_args)
     module = MODES[selected.mode]
+    if isinstance(module, str):
+        module = importlib.import_module(module)
     return module.run(module.parse_args(mode_args))
 
 

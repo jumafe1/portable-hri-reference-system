@@ -1,0 +1,322 @@
+{
+  "started_utc": "2026-10-14T17:07:15.637243+00:00",
+  "evidence_directory": "/tmp/portable-hri-velocity-probe-aciopprq",
+  "checks": [
+    {
+      "name": "registration_and_acquisition",
+      "passed": true
+    },
+    {
+      "name": "backend_absent_rejects_command",
+      "passed": true
+    },
+    {
+      "name": "backend_appearance_does_not_replay_command",
+      "passed": true
+    },
+    {
+      "name": "directions_limits_and_ramp",
+      "passed": true,
+      "first_samples": [
+        [
+          2014.206677039,
+          [
+            0.0045401125,
+            -0.0045401125,
+            0.0,
+            0.0,
+            0.0,
+            0.01816045
+          ]
+        ],
+        [
+          2014.20711708,
+          [
+            0.009540112500000001,
+            -0.009540112500000001,
+            0.0,
+            0.0,
+            0.0,
+            0.038160450000000005
+          ]
+        ],
+        [
+          2014.20740408,
+          [
+            0.014038941700000002,
+            -0.014038941700000002,
+            0.0,
+            0.0,
+            0.0,
+            0.05615576680000001
+          ]
+        ],
+        [
+          2014.263430914,
+          [
+            0.019038941700000003,
+            -0.019038941700000003,
+            0.0,
+            0.0,
+            0.0,
+            0.07615576680000001
+          ]
+        ],
+        [
+          2014.279508955,
+          [
+            0.023585654200000004,
+            -0.02,
+            0.0,
+            0.0,
+            0.0,
+            0.08
+          ]
+        ],
+        [
+          2014.332061997,
+          [
+            0.028580533400000004,
+            -0.02,
+            0.0,
+            0.0,
+            0.0,
+            0.08
+          ]
+        ],
+        [
+          2014.380314497,
+          [
+            0.0335805334,
+            -0.02,
+            0.0,
+            0.0,
+            0.0,
+            0.08
+          ]
+        ],
+        [
+          2014.495545247,
+          [
+            0.038580533400000006,
+            -0.02,
+            0.0,
+            0.0,
+            0.0,
+            0.08
+          ]
+        ]
+      ],
+      "last_samples": [
+        [
+          2014.831157497,
+          [
+            0.04,
+            -0.02,
+            0.0,
+            0.0,
+            0.0,
+            0.08
+          ]
+        ],
+        [
+          2015.027548081,
+          [
+            0.04,
+            -0.02,
+            0.0,
+            0.0,
+            0.0,
+            0.08
+          ]
+        ],
+        [
+          2015.027853039,
+          [
+            0.04,
+            -0.02,
+            0.0,
+            0.0,
+            0.0,
+            0.08
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "input_loss_stops",
+      "passed": true,
+      "samples": [
+        [
+          2015.519912998,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          2015.520295748,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          2015.561108373,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "invalid_nan_stops",
+      "passed": true
+    },
+    {
+      "name": "invalid_infinity_stops",
+      "passed": true
+    },
+    {
+      "name": "invalid_x_limit_stops",
+      "passed": true
+    },
+    {
+      "name": "invalid_y_limit_stops",
+      "passed": true
+    },
+    {
+      "name": "invalid_yaw_limit_stops",
+      "passed": true
+    },
+    {
+      "name": "invalid_linear.z_stops",
+      "passed": true
+    },
+    {
+      "name": "invalid_angular.x_stops",
+      "passed": true
+    },
+    {
+      "name": "invalid_angular.y_stops",
+      "passed": true
+    },
+    {
+      "name": "reverse_directions",
+      "passed": true
+    },
+    {
+      "name": "explicit_zero_stops",
+      "passed": true
+    },
+    {
+      "name": "backend_disconnection_invalidates_command",
+      "passed": true
+    },
+    {
+      "name": "velocity_blocks_relative_activation",
+      "passed": true,
+      "running": {
+        "hri_capability_interfaces/MoveVelocity": "hri_naoqi_providers/NaoqiMoveVelocity"
+      }
+    },
+    {
+      "name": "release_sends_zero",
+      "passed": true,
+      "samples": [
+        [
+          2024.842379336,
+          [
+            0.03,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          2024.843180961,
+          [
+            0.03,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          2024.843832086,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "reacquire_has_no_stale_command",
+      "passed": true
+    },
+    {
+      "name": "relative_blocks_velocity_activation",
+      "passed": true,
+      "running": {
+        "hri_capability_interfaces/MoveRelative": "hri_naoqi_providers/NaoqiMoveRelative"
+      }
+    },
+    {
+      "name": "relative_release",
+      "passed": true
+    },
+    {
+      "name": "velocity_after_relative_release",
+      "passed": true
+    }
+  ],
+  "limits": [
+    "Software-only; no physical movement or stop is proven.",
+    "Exclusivity applies only to cooperating providers on this host."
+  ],
+  "known_upstream_limitations": [
+    {
+      "name": "upstream_failed_activation_remains_in_catalog",
+      "capability": "hri_capability_interfaces/MoveRelative",
+      "reported_running": {
+        "hri_capability_interfaces/MoveRelative": "hri_naoqi_providers/NaoqiMoveRelative",
+        "hri_capability_interfaces/MoveVelocity": "hri_naoqi_providers/NaoqiMoveVelocity"
+      },
+      "operational_endpoint_absent": true,
+      "description": "RunnerCache inserts the plugin before start; a thrown start leaves a phantom running entry."
+    },
+    {
+      "name": "upstream_failed_activation_remains_in_catalog",
+      "capability": "hri_capability_interfaces/MoveVelocity",
+      "reported_running": {
+        "hri_capability_interfaces/MoveRelative": "hri_naoqi_providers/NaoqiMoveRelative",
+        "hri_capability_interfaces/MoveVelocity": "hri_naoqi_providers/NaoqiMoveVelocity"
+      },
+      "operational_endpoint_absent": true,
+      "description": "RunnerCache inserts the plugin before start; a thrown start leaves a phantom running entry."
+    }
+  ],
+  "passed": true
+}

@@ -1,0 +1,55 @@
+[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-14-17-08-29-319613-docker-desktop-1572
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [capabilities2_server_node-1]: process started with pid [1575]
+[INFO] [hri_app-2]: process started with pid [1576]
+[capabilities2_server_node-1] [WARN] [1791997709.349705838] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[capabilities2_server_node-1] [WARN] [1791997709.349716422] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[capabilities2_server_node-1] [INFO] [1791997709.360987088] [capabilities]: Rebuilding capabilities database
+[capabilities2_server_node-1] [INFO] [1791997709.364367255] [capabilities]: CAPAPI connected to db: /tmp/portable_hri_app.sqlite3
+[capabilities2_server_node-1] [INFO] [1791997709.364841797] [capabilities]: adding capability: hri_capability_interfaces/capability_interfaces/DetectPeople.yaml
+[capabilities2_server_node-1] [INFO] [1791997709.366044047] [capabilities]: interface added to db: hri_capability_interfaces/DetectPeople
+[capabilities2_server_node-1] [INFO] [1791997709.366183130] [capabilities]: adding capability: hri_capability_interfaces/capability_interfaces/MoveRelative.yaml
+[capabilities2_server_node-1] [INFO] [1791997709.366921088] [capabilities]: interface added to db: hri_capability_interfaces/MoveRelative
+[capabilities2_server_node-1] [INFO] [1791997709.367046297] [capabilities]: adding capability: hri_capability_interfaces/capability_interfaces/MoveVelocity.yaml
+[capabilities2_server_node-1] [INFO] [1791997709.367814047] [capabilities]: interface added to db: hri_capability_interfaces/MoveVelocity
+[capabilities2_server_node-1] [INFO] [1791997709.367931338] [capabilities]: adding capability: hri_capability_interfaces/capability_interfaces/Speak.yaml
+[capabilities2_server_node-1] [INFO] [1791997709.368542422] [capabilities]: interface added to db: hri_capability_interfaces/Speak
+[capabilities2_server_node-1] [INFO] [1791997709.368786088] [capabilities]: adding capability: hri_naoqi_providers/capability_providers/NaoqiMoveRelative.yaml
+[capabilities2_server_node-1] [INFO] [1791997709.369533588] [capabilities]: provider added to db: hri_naoqi_providers/NaoqiMoveRelative
+[capabilities2_server_node-1] [INFO] [1791997709.369650297] [capabilities]: adding capability: hri_naoqi_providers/capability_providers/NaoqiMoveVelocity.yaml
+[capabilities2_server_node-1] [INFO] [1791997709.370279047] [capabilities]: provider added to db: hri_naoqi_providers/NaoqiMoveVelocity
+[capabilities2_server_node-1] [INFO] [1791997709.370395838] [capabilities]: adding capability: hri_naoqi_providers/capability_providers/NaoSpeak.yaml
+[capabilities2_server_node-1] [INFO] [1791997709.371139630] [capabilities]: provider added to db: hri_naoqi_providers/NaoSpeak
+[capabilities2_server_node-1] [INFO] [1791997709.371352922] [capabilities]: adding capability: hri_yolo_providers/capability_providers/YoloDetectPeople.yaml
+[capabilities2_server_node-1] [INFO] [1791997709.371973380] [capabilities]: provider added to db: hri_yolo_providers/YoloDetectPeople
+[capabilities2_server_node-1] [INFO] [1791997709.376514963] [capabilities]: capabilities server started
+[hri_app-2] [WARN] [1791997709.559523672] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[hri_app-2] [WARN] [1791997709.559534255] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[hri_app-2] [INFO] [1791997709.595792088] [portable_hri_app]: [ros_clients_cache.py:_get_or_create:70] Creating new service client for '/capabilities/establish_bond' of type 'capabilities2_msgs.srv._establish_bond.EstablishBond'
+[hri_app-2] [INFO] [1791997709.596334588] [portable_hri_app]: [ros_clients_cache.py:_get_or_create:70] Creating new service client for '/capabilities/use_capability' of type 'capabilities2_msgs.srv._use_capability.UseCapability'
+[hri_app-2] [INFO] [1791997709.596987463] [portable_hri_app]: [ros_clients_cache.py:_get_or_create:70] Creating new service client for '/capabilities/free_capability' of type 'capabilities2_msgs.srv._free_capability.FreeCapability'
+[hri_app-2] [INFO] [1791997709.597453797] [portable_hri_app]: [ros_clients_cache.py:_get_or_create:68] Reusing existing service client for '/capabilities/free_capability' of type 'capabilities2_msgs.srv._free_capability.FreeCapability'
+[hri_app-2] [INFO] [1791997709.597601380] [portable_hri_app]: [state_machine.cpp:execute:476] Executing state machine with initial state 'ESTABLISH_BOND'
+[hri_app-2] [INFO] [1791997709.597742297] [portable_hri_app]: [service_state.py:execute:138] Waiting for service '/capabilities/establish_bond'
+[hri_app-2] [INFO] [1791997709.849241380] [portable_hri_app]: [service_state.py:execute:153] Sending request to service '/capabilities/establish_bond'
+[hri_app-2] [INFO] [1791997709.855089463] [portable_hri_app]: [state_machine.cpp:execute_step:614] State machine transitioning 'ESTABLISH_BOND' : 'succeeded' --> 'START_BOND'
+[capabilities2_server_node-1] [INFO] [1791997709.859187713] [capabilities]: bond established with id: 48076236-fad3-42ec-8347-c56b05c6e2f7
+[hri_app-2] [INFO] [1791997710.871482756] [portable_hri_app]: [state_machine.cpp:execute_step:614] State machine transitioning 'START_BOND' : 'succeeded' --> 'USE_MOVE_VELOCITY'
+[hri_app-2] [INFO] [1791997710.872499881] [portable_hri_app]: [service_state.py:execute:138] Waiting for service '/capabilities/use_capability'
+[hri_app-2] [INFO] [1791997710.873257256] [portable_hri_app]: [service_state.py:execute:153] Sending request to service '/capabilities/use_capability'
+[capabilities2_server_node-1] [INFO] [1791997710.884390797] [capabilities]: started capability: hri_capability_interfaces/MoveVelocity with provider: hri_naoqi_providers/NaoqiMoveVelocity
+[hri_app-2] [INFO] [1791997710.925260756] [portable_hri_app]: [state_machine.cpp:execute_step:614] State machine transitioning 'USE_MOVE_VELOCITY' : 'succeeded' --> 'WAIT_READY'
+[hri_app-2] [INFO] [1791997711.975183298] [portable_hri_app]: [state_machine.cpp:execute_step:614] State machine transitioning 'WAIT_READY' : 'succeeded' --> 'STREAM_VELOCITY'
+[hri_app-2] [INFO] [1791997712.612433006] [portable_hri_app]: [state_machine.cpp:execute_step:614] State machine transitioning 'STREAM_VELOCITY' : 'aborted' --> 'FREE_AFTER_FAILURE'
+[hri_app-2] [INFO] [1791997712.612837548] [portable_hri_app]: [service_state.py:execute:138] Waiting for service '/capabilities/free_capability'
+[hri_app-2] [INFO] [1791997712.613088840] [portable_hri_app]: [service_state.py:execute:153] Sending request to service '/capabilities/free_capability'
+[capabilities2_server_node-1] [INFO] [1791997712.614323465] [capabilities]: stopping freed capability: hri_capability_interfaces/MoveVelocity
+[capabilities2_server_node-1] [INFO] [1791997712.616640881] [capabilities]: stopped capability: hri_capability_interfaces/MoveVelocity
+[hri_app-2] [INFO] [1791997712.617913048] [portable_hri_app]: [state_machine.cpp:execute_step:614] State machine transitioning 'FREE_AFTER_FAILURE' : 'succeeded' --> 'application_failed'
+[hri_app-2] [INFO] [1791997712.618058423] [portable_hri_app]: [state_machine.cpp:execute_step:619] State machine ends with outcome 'application_failed'
+[capabilities2_server_node-1] [WARN] [1791997712.618770381] [capabilities]: bond broken for id: 48076236-fad3-42ec-8347-c56b05c6e2f7
+[hri_app-2] {"outcome": "application_failed", "robot": "nao", "capability": "hri_capability_interfaces/MoveVelocity", "requested_provider": "hri_naoqi_providers/NaoqiMoveVelocity", "request": {"vx_m_s": 0.04, "vy_m_s": 0.0, "wz_rad_s": 0.0, "duration_s": 5.0}, "commands_sent": 3, "message": "cancelled", "released": true, "stop_acknowledged": true, "physical_success_verified": false}
+[ERROR] [hri_app-2]: process has died [pid 1576, exit code 1, cmd '/workspace/install/hri_reference_app/lib/hri_reference_app/hri_app --mode move_velocity --robot nao --vx 0.04 --vy 0.0 --wz 0.0 --duration 5.0 --confirm MOVER --ros-args -r __node:=portable_hri_app'].
+[INFO] [capabilities2_server_node-1]: sending signal 'SIGINT' to process[capabilities2_server_node-1]
+[capabilities2_server_node-1] [INFO] [1791997712.762196965] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [capabilities2_server_node-1]: process has finished cleanly [pid 1575]

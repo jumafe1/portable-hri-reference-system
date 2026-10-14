@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-colcon-common-extensions python3-rosdep python3-vcstool \
     python3-pip python3-venv \
     ros-jazzy-bondcpp ros-jazzy-naoqi-libqi \
-    ros-jazzy-yasmin ros-jazzy-yasmin-ros \
+    ros-jazzy-yasmin ros-jazzy-yasmin-ros ros-jazzy-bondpy \
     libsqlite3-dev libtinyxml2-dev libyaml-cpp-dev uuid-dev \
     && rm -rf /var/lib/apt/lists/*
 

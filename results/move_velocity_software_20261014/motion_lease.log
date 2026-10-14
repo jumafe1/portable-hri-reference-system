@@ -1,0 +1,19 @@
+Start testing: Oct 14 17:05 UTC
+----------------------------------------------------------
+1/1 Testing: motion_lease
+1/1 Test: motion_lease
+Command: "/workspace/build/hri_naoqi_providers/test_motion_lease"
+Directory: /workspace/build/hri_naoqi_providers
+"motion_lease" start time: Oct 14 17:05 UTC
+Output:
+----------------------------------------------------------
+Motion lease: same/cross-process exclusion, normal release, and latch passed
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"motion_lease" end time: Oct 14 17:05 UTC
+"motion_lease" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Oct 14 17:05 UTC

@@ -18,7 +18,7 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-MODES = {"speak", "detect_people", "move_relative"}
+MODES = {"speak", "detect_people", "move_relative", "move_velocity"}
 ROBOTS = {"nao", "pepper"}
 MOVEMENT_LIMITS = (0.5, 0.3, math.pi / 2.0)
 
@@ -60,6 +60,24 @@ def application_arguments(context, mode, robot):
 
     if argument(context, "confirm") != "MOVER":
         raise RuntimeError('Movement requires confirm:=MOVER')
+    if mode == "move_velocity":
+        names = ("vx", "vy", "wz", "duration")
+        try:
+            vx, vy, wz, duration = (float(argument(context, name)) for name in names)
+        except ValueError as error:
+            raise RuntimeError("Velocities and duration must be numbers") from error
+        if not all(math.isfinite(value) for value in (vx, vy, wz, duration)):
+            raise RuntimeError("Velocities and duration must be finite")
+        if not 0.1 <= duration <= 5.0:
+            raise RuntimeError("Duration must be in [0.1, 5.0] seconds")
+        if any(abs(value) > limit for value, limit in zip((vx, vy, wz), (0.10, 0.05, 0.20))):
+            raise RuntimeError("Velocity exceeds vx=0.10 m/s, vy=0.05 m/s or wz=0.20 rad/s")
+        if all(abs(value) <= 1e-6 for value in (vx, vy, wz)):
+            raise RuntimeError("At least one velocity component must be non-zero")
+        return args + [
+            "--vx", str(vx), "--vy", str(vy), "--wz", str(wz),
+            "--duration", str(duration), "--confirm", "MOVER",
+        ]
     try:
         values = tuple(float(argument(context, name)) for name in ("x", "y", "theta"))
     except ValueError as error:
@@ -81,10 +99,12 @@ def launch_setup(context):
     mode = argument(context, "mode").strip().lower()
     robot = argument(context, "robot").strip().lower()
     if mode not in MODES:
-        raise RuntimeError("mode must be speak, detect_people or move_relative")
+        raise RuntimeError("mode must be speak, detect_people, move_relative or move_velocity")
     if robot not in ROBOTS:
         raise RuntimeError("robot must be nao or pepper")
     app_args = application_arguments(context, mode, robot)
+    if mode == "move_velocity" and find_spec("bondpy") is None:
+        raise RuntimeError("MoveVelocity requires ros-jazzy-bondpy. Install it and source ROS.")
 
     share_parents = {
         str(Path(get_package_share_directory(package)).parent)
@@ -98,6 +118,7 @@ def launch_setup(context):
         ("/nao/say", "/pepper/say"),
         ("/nao/move_to", "/pepper/move_to"),
         ("/nao/odom", "/pepper/odom"),
+        ("/nao/cmd_vel", "/pepper/cmd_vel"),
     ]
     capabilities_server = Node(
         package="capabilities2_server",
@@ -130,7 +151,7 @@ def launch_setup(context):
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument("robot", description="nao or pepper"),
-        DeclareLaunchArgument("mode", description="speak, detect_people or move_relative"),
+        DeclareLaunchArgument("mode", description="speak, detect_people, move_relative or move_velocity"),
         DeclareLaunchArgument("text", default_value="Hola, esta es una aplicación portable con YASMIN."),
         DeclareLaunchArgument("language", default_value="Spanish"),
         DeclareLaunchArgument("minimum_confidence", default_value="0.5"),
@@ -138,6 +159,10 @@ def generate_launch_description():
         DeclareLaunchArgument("x", default_value="0.0"),
         DeclareLaunchArgument("y", default_value="0.0"),
         DeclareLaunchArgument("theta", default_value="0.0"),
+        DeclareLaunchArgument("vx", default_value="0.0", description="Forward velocity, m/s"),
+        DeclareLaunchArgument("vy", default_value="0.0", description="Left velocity, m/s"),
+        DeclareLaunchArgument("wz", default_value="0.0", description="Yaw velocity, rad/s"),
+        DeclareLaunchArgument("duration", default_value="2.0", description="Velocity stream duration, 0.1 to 5 seconds"),
         DeclareLaunchArgument("confirm", default_value=""),
         OpaqueFunction(function=launch_setup),
     ])

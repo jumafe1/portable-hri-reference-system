@@ -33,6 +33,7 @@ install(
     scripts/speak_demo.py
     scripts/people_demo.py
     scripts/move_demo.py
+    scripts/velocity_mode.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

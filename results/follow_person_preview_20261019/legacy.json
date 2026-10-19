@@ -1,0 +1,183 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "movement_requires_confirmation",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-21-27-45-559622-docker-desktop-2860\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Movement requires confirm:=MOVER\n"
+    },
+    {
+      "name": "movement_rejects_out_of_bounds",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-21-27-45-712912-docker-desktop-2864\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Movement exceeds x=0.5 m, y=0.3 m or theta=pi/2 rad\n"
+    },
+    {
+      "name": "nao_speak",
+      "passed": true,
+      "result": {
+        "outcome": "application_succeeded",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/Speak",
+        "requested_provider": "hri_naoqi_providers/NaoSpeak",
+        "provider": "hri_naoqi_providers/NaoSpeak",
+        "message": "simulated_speech",
+        "released": true,
+        "final_state": ""
+      },
+      "backend_events": [
+        [
+          "speak",
+          "nao",
+          "Prueba de voz simulada."
+        ]
+      ],
+      "output_tail": ""
+    },
+    {
+      "name": "nao_detect_people",
+      "passed": true,
+      "result": {
+        "outcome": "application_succeeded",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "requested_provider": "hri_yolo_providers/YoloDetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "message": "person_detected",
+        "people": [
+          {
+            "confidence": 0.91,
+            "tracking_id": "simulated-person",
+            "center_x": 100.0,
+            "center_y": 80.0,
+            "width": 50.0,
+            "height": 100.0
+          }
+        ],
+        "released": true,
+        "last_frame_stamp": {
+          "nanosec": 45586427,
+          "sec": 1792445269
+        },
+        "final_state": ""
+      },
+      "backend_events": [],
+      "output_tail": ""
+    },
+    {
+      "name": "nao_move_relative",
+      "passed": true,
+      "result": {
+        "outcome": "application_succeeded",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/MoveRelative",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "request": {
+          "x_m": 0.1,
+          "y_m": 0.0,
+          "theta_rad": 0.0
+        },
+        "achieved": {
+          "theta_rad": 0.0,
+          "y_m": 0.0,
+          "x_m": 0.10000000149011612
+        },
+        "message": "motion_completed",
+        "released": true,
+        "odometry_retries": 1
+      },
+      "backend_events": [
+        [
+          "move_relative",
+          "nao",
+          0.10000000149011612
+        ]
+      ],
+      "output_tail": ""
+    },
+    {
+      "name": "pepper_speak",
+      "passed": true,
+      "result": {
+        "outcome": "application_succeeded",
+        "robot": "pepper",
+        "capability": "hri_capability_interfaces/Speak",
+        "requested_provider": "hri_naoqi_providers/NaoSpeak",
+        "provider": "hri_naoqi_providers/NaoSpeak",
+        "message": "simulated_speech",
+        "released": true,
+        "final_state": ""
+      },
+      "backend_events": [
+        [
+          "speak",
+          "pepper",
+          "Prueba de voz simulada."
+        ]
+      ],
+      "output_tail": ""
+    },
+    {
+      "name": "pepper_detect_people",
+      "passed": true,
+      "result": {
+        "outcome": "application_succeeded",
+        "robot": "pepper",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "requested_provider": "hri_yolo_providers/YoloDetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "message": "person_detected",
+        "people": [
+          {
+            "confidence": 0.91,
+            "tracking_id": "simulated-person",
+            "center_x": 100.0,
+            "center_y": 80.0,
+            "width": 50.0,
+            "height": 100.0
+          }
+        ],
+        "released": true,
+        "last_frame_stamp": {
+          "nanosec": 845979013,
+          "sec": 1792445273
+        },
+        "final_state": ""
+      },
+      "backend_events": [],
+      "output_tail": ""
+    },
+    {
+      "name": "pepper_move_relative",
+      "passed": true,
+      "result": {
+        "outcome": "application_succeeded",
+        "robot": "pepper",
+        "capability": "hri_capability_interfaces/MoveRelative",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "request": {
+          "x_m": 0.1,
+          "y_m": 0.0,
+          "theta_rad": 0.0
+        },
+        "achieved": {
+          "theta_rad": 0.0,
+          "y_m": 0.0,
+          "x_m": 0.10000000149011612
+        },
+        "message": "motion_completed",
+        "released": true,
+        "odometry_retries": 1
+      },
+      "backend_events": [
+        [
+          "move_relative",
+          "pepper",
+          0.10000000149011612
+        ]
+      ],
+      "output_tail": ""
+    }
+  ]
+}

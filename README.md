@@ -2,13 +2,23 @@
 
 Integración y pruebas reproducibles de la arquitectura portable HRI sobre ROS 2.
 
+## Seguimiento visual: primera etapa sin movimiento
+
+`hri_app` incorpora `mode:=follow_person` como previsualización: YASMIN adquiere
+`DetectPeople` mediante Capabilities2, mantiene una persona objetivo y calcula
+propuestas limitadas de avance/giro. Solo publica diagnóstico JSON; **no activa
+MoveVelocity ni envía órdenes al robot**. Instrucciones NAO, límites de identidad,
+antigüedad de imágenes y siguiente ensayo supervisado en [FOLLOW_PERSON.md](FOLLOW_PERSON.md).
+
 ## Velocidad continua portable
 
 `hri_app` añade `mode:=move_velocity`: flujo `Twist` mediante el contrato
 `MoveVelocity` y el proveedor `NaoqiMoveVelocity`. Incluye watchdog de entrada,
 límites y exclusión local con `MoveRelative`; no modifica vida autónoma ni
-implementa seguimiento de personas. La prueba física de este incremento está
-pendiente. Preparación, comandos NAO, arquitectura y límites de la parada en
+implementa seguimiento de personas por sí solo. El autor confirmó movimiento
+y parada en dos ensayos NAO (0.03 y 0.05 m/s); no se incorporan aquí JSON ni
+mediciones físicas no conservadas. La validación física en Pepper sigue pendiente.
+Preparación, comandos NAO, arquitectura y límites de la parada en
 [MOVE_VELOCITY.md](MOVE_VELOCITY.md).
 
 ## Desplazamiento relativo portable

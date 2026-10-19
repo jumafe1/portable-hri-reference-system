@@ -17,6 +17,7 @@ MODES = {
     "detect_people": people_demo,
     "move_relative": move_demo,
     "move_velocity": "velocity_mode",
+    "follow_person": "follow_mode",
 }
 
 

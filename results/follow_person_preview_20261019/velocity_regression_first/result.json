@@ -1,0 +1,477 @@
+{
+  "started_utc": "2026-10-19T21:24:44.526526+00:00",
+  "checks": [
+    {
+      "name": "requires_confirmation",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-21-24-45-721659-docker-desktop-2033\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Movement requires confirm:=MOVER\n"
+    },
+    {
+      "name": "rejects_long_duration",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-21-24-45-888244-docker-desktop-2036\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Duration must be in [0.1, 5.0] seconds\n"
+    },
+    {
+      "name": "rejects_zero_duration",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-21-24-46-037169-docker-desktop-2039\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Duration must be in [0.1, 5.0] seconds\n"
+    },
+    {
+      "name": "rejects_x_limit",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-21-24-46-186874-docker-desktop-2042\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Velocity exceeds vx=0.10 m/s, vy=0.05 m/s or wz=0.20 rad/s\n"
+    },
+    {
+      "name": "rejects_nan",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-21-24-46-330185-docker-desktop-2045\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Velocities and duration must be finite\n"
+    },
+    {
+      "name": "rejects_zero_velocity",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-21-24-46-487330-docker-desktop-2048\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): At least one velocity component must be non-zero\n"
+    },
+    {
+      "name": "nao_routing_stream_stop_release",
+      "passed": true,
+      "application": {
+        "outcome": "application_succeeded",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/MoveVelocity",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveVelocity",
+        "request": {
+          "vx_m_s": 0.04,
+          "vy_m_s": -0.02,
+          "wz_rad_s": 0.08,
+          "duration_s": 1.2
+        },
+        "commands_sent": 19,
+        "message": "velocity_stream_completed",
+        "released": true,
+        "stop_acknowledged": true,
+        "physical_success_verified": false
+      },
+      "sample_count": 47,
+      "first_commands": [
+        [
+          90986.91041401,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90986.967946718,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90987.006416635,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90987.034870676,
+          [
+            0.005000000000000001,
+            -0.005000000000000001,
+            0.0,
+            0.0,
+            0.0,
+            0.020000000000000004
+          ]
+        ],
+        [
+          90987.096877176,
+          [
+            0.010000000000000002,
+            -0.010000000000000002,
+            0.0,
+            0.0,
+            0.0,
+            0.04000000000000001
+          ]
+        ],
+        [
+          90987.134701551,
+          [
+            0.014841154200000001,
+            -0.014841154200000001,
+            0.0,
+            0.0,
+            0.0,
+            0.059364616800000006
+          ]
+        ]
+      ],
+      "last_commands": [
+        [
+          90988.64049726,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90988.653254219,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90988.681340094,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90988.713800177,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90988.773384177,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90988.773909594,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "pepper_routing_stream_stop_release",
+      "passed": true,
+      "application": {
+        "outcome": "application_succeeded",
+        "robot": "pepper",
+        "capability": "hri_capability_interfaces/MoveVelocity",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveVelocity",
+        "request": {
+          "vx_m_s": 0.04,
+          "vy_m_s": -0.02,
+          "wz_rad_s": 0.08,
+          "duration_s": 1.2
+        },
+        "commands_sent": 21,
+        "message": "velocity_stream_completed",
+        "released": true,
+        "stop_acknowledged": true,
+        "physical_success_verified": false
+      },
+      "sample_count": 45,
+      "first_commands": [
+        [
+          90990.740228886,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90990.805603928,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90990.860321595,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90990.86067922,
+          [
+            0.0049746750000000005,
+            -0.0049746750000000005,
+            0.0,
+            0.0,
+            0.0,
+            0.019898700000000002
+          ]
+        ],
+        [
+          90990.889991303,
+          [
+            0.009974675000000002,
+            -0.009974675000000002,
+            0.0,
+            0.0,
+            0.0,
+            0.03989870000000001
+          ]
+        ],
+        [
+          90990.941415262,
+          [
+            0.014960050000000003,
+            -0.014960050000000003,
+            0.0,
+            0.0,
+            0.0,
+            0.05984020000000001
+          ]
+        ]
+      ],
+      "last_commands": [
+        [
+          90992.407985637,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90992.408455054,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90992.442263387,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90992.504146887,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90992.544136012,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90992.544695596,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "application_sigint_stops_and_releases",
+      "passed": true,
+      "application": {
+        "outcome": "application_failed",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/MoveVelocity",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveVelocity",
+        "request": {
+          "vx_m_s": 0.04,
+          "vy_m_s": 0.0,
+          "wz_rad_s": 0.0,
+          "duration_s": 5.0
+        },
+        "commands_sent": 1,
+        "message": "cancelled",
+        "released": true,
+        "stop_acknowledged": true,
+        "physical_success_verified": false
+      },
+      "last_commands": [
+        [
+          90995.12167243,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90995.169492263,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90995.177340346,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90995.226683596,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          90995.226943013,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "multiple_publishers_rejected",
+      "passed": false,
+      "application": {
+        "outcome": "application_succeeded",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/MoveVelocity",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveVelocity",
+        "request": {
+          "vx_m_s": 0.04,
+          "vy_m_s": 0.0,
+          "wz_rad_s": 0.0,
+          "duration_s": 1.2
+        },
+        "commands_sent": 18,
+        "message": "velocity_stream_completed",
+        "released": true,
+        "stop_acknowledged": true,
+        "physical_success_verified": false
+      }
+    },
+    {
+      "name": "backend_absent_fails_closed",
+      "passed": true,
+      "application": {
+        "outcome": "application_failed",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/MoveVelocity",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveVelocity",
+        "request": {
+          "vx_m_s": 0.04,
+          "vy_m_s": 0.0,
+          "wz_rad_s": 0.0,
+          "duration_s": 1.2
+        },
+        "commands_sent": 0,
+        "message": "provider_not_ready",
+        "released": true,
+        "stop_acknowledged": false,
+        "physical_success_verified": false
+      },
+      "launch_exit_code": 0
+    }
+  ],
+  "evidence_directory": "/tmp/portable-hri-app-velocity-probe-i6p7_m6v",
+  "limits": [
+    "Fake cmd_vel subscribers; no physical movement or stop is verified."
+  ],
+  "passed": false
+}

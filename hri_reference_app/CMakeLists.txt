@@ -34,6 +34,9 @@ install(
     scripts/people_demo.py
     scripts/move_demo.py
     scripts/velocity_mode.py
+    scripts/follow_mode.py
+    scripts/follow_session.py
+    scripts/follow_controller.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

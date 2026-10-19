@@ -31,10 +31,12 @@ YASMIN recibe este nodo mediante `ServiceState(node=...)` y
 
 - El centro horizontal del rectángulo orienta la sugerencia de giro. El tamaño relativo del rectángulo orienta la sugerencia de avance.
 - `target_height_ratio:=0.60` significa que la altura objetivo del rectángulo ocupa el 60 % de la imagen. **No significa 60 cm ni mide distancia.** El resultado conserva `distance_m: null`.
-- Se requieren tres observaciones consecutivas compatibles de una sola persona elegible. El umbral predeterminado es `minimum_confidence:=0.65`.
-- Sin un identificador de tracking, solo se verifica continuidad espacial aproximada; no se reconoce la identidad humana. Un identificador de tracking tampoco constituye identificación personal autenticada.
+- **Hipótesis del ensayo: una única persona en un ambiente controlado.** Se requieren tres observaciones consecutivas con una sola persona elegible. El umbral predeterminado es `minimum_confidence:=0.65`; varias detecciones que superan ese umbral son ambiguas.
+- Se usa la única detección elegible sin comparar identidades, tamaños ni posiciones con la imagen anterior. No requiere tracking y no garantiza que sea la misma persona si alguien la sustituye sin un intervalo detectable. No usar esta simplificación como seguimiento entre multitudes.
 - Las sugerencias están limitadas a avance de 0.03 m/s y giro de 0.10 rad/s en magnitud; no hay marcha atrás ni desplazamiento lateral. Son números diagnósticos, no velocidades ejecutadas.
-- Tras adquirir el objetivo, pérdida, ambigüedad o discontinuidad dejan la propuesta en cero y terminan la prueba con fallo. No hay recuperación automática: revisar la causa y realizar una nueva ejecución.
+- Cambiar de posición, tamaño de caja o identificador no genera `target_discontinuity`. Una caja grande (altura mayor al 65 % con los valores predeterminados) bloquea el avance, pero permite proponer giro si está descentrada: `preview_centering_close`. Centrada, da cero con `target_too_close_visual`. No se aumentaron las velocidades.
+- Una caja que toca un borde da cero en ambos ejes (`clipped_detection`), sin terminar por ese solo motivo; si vuelve a estar completa puede reanudar propuestas. No se busca fuera de la imagen. Que una caja no toque el borde no garantiza que la persona esté completa.
+- Tras adquirir el objetivo, pérdida, ambigüedad o datos inválidos/antiguos dejan la propuesta en cero y terminan la prueba con fallo. No hay recuperación automática de esos fallos: revisar la causa y realizar una nueva ejecución.
 - Se rechazan proveedor o `frame_id` inesperados, timestamps repetidos/no crecientes, imágenes de más de 0.75 s de antigüedad o de más de 0.10 s en el futuro. Los relojes y la latencia importan; no reducir estas validaciones para ocultar un problema de la fuente.
 
 El `frame_id` esperado es una comprobación de consistencia, no autenticación de cámara. `robot:=nao` por sí solo no garantiza que YOLO esté recibiendo la cámara correcta. Verificar también tópico de entrada y origen de las detecciones; no mezclar NAO y Pepper en `/yolo/detections`.
@@ -91,10 +93,10 @@ no habilita sesiones simultáneas independientes para NAO y Pepper.
 Cargar los tres entornos y ejecutar:
 
 ```bash
-ros2 launch yolo_bringup yolo.launch.py model:=yolov8n.pt device:=cpu input_image_topic:=/nao/camera/front/image_raw use_tracking:=False use_3d:=False use_debug:=True
+ros2 launch yolo_bringup yolo.launch.py model:=yolov8n.pt device:=cpu input_image_topic:=/nao/camera/front/image_raw imgsz_height:=320 imgsz_width:=320 use_tracking:=False use_3d:=False use_debug:=True
 ```
 
-Si ya existe una instancia correcta, no duplicarla. Este comando no añade tracking: la continuidad será geométrica aproximada.
+Si ya existe una instancia correcta, no duplicarla. No se necesita tracking bajo la hipótesis de una sola persona. La inferencia 320 × 320 redujo la latencia observada en el laboratorio; no cambia el campo visual ni la resolución original de la cámara (320 × 240 en ese ensayo). No garantiza ausencia de retrasos posteriores.
 
 ### Terminal 3: comprobar fuente y ejecutar la aplicación
 
@@ -121,7 +123,7 @@ El tiempo de observación admite entre 1 y 60 segundos; preparación y limpieza 
 Cargar los tres entornos y, durante la ejecución, observar:
 
 ```bash
-ros2 topic echo /hri/follow_person/preview --qos-reliability best_effort
+ros2 topic echo /hri/follow_person/preview std_msgs/msg/String --qos-reliability best_effort
 ```
 
 El diagnóstico usa QoS best-effort para no bloquear la observación esperando
@@ -129,12 +131,14 @@ confirmaciones de un visor. Puede perder muestras; el JSON final resume el resul
 En otra terminal configurada, si se desea imagen:
 
 ```bash
-rqt
+ros2 run rqt_image_view rqt_image_view
 ```
 
 En el visor de imágenes seleccionar `/yolo/dbg_image`. Los rectángulos los dibuja YOLO y pueden incluir objetos distintos de personas; el contrato `DetectPeople` filtra personas. **No remapear ni convertir el tópico preview a `/cmd_vel`.**
 
-Primero permanecer visible como única persona, con el cuerpo dentro del encuadre. Después comprobar por separado pérdida de objetivo y entrada de otra persona. Cada fallo que queda bloqueado requiere una nueva ejecución. Guardar el JSON final y la observación: `application_succeeded` acredita únicamente la previsualización, con `dry_run: true`, `motion_enabled: false` y `physical_success_verified: false`.
+Primero permanecer visible como única persona, con el cuerpo dentro del encuadre y la cabeza del robot mirando al frente. Desplazarse lentamente hacia la izquierda/derecha de la imagen: se esperan propuestas `wz_rad_s` positivas/negativas, respectivamente. Muy descentrado no propone avanzar; centrado y con caja de menos del 55 % de altura puede proponer avance. Caja grande descentrada puede dar `preview_centering_close`, sin avance. Esto no autoriza un giro físico cerca de personas.
+
+Después comprobar por separado pérdida de objetivo y entrada de otra persona. Cada fallo que queda bloqueado requiere una nueva ejecución. Guardar el JSON final y la observación: `application_succeeded` acredita únicamente la previsualización, con `dry_run: true`, `motion_enabled: false` y `physical_success_verified: false`. El cambio no elimina los cortes por antigüedad de imagen: deben diagnosticarse si se repiten, no ocultarse aumentando el límite.
 
 ## Verificaciones de software
 
@@ -158,12 +162,14 @@ sin crear un grafo ROS ni conectarse al robot.
 
 ## Siguiente etapa y límites
 
-La verificación software de esta entrega pasó 52 pruebas unitarias/de adaptador/cierre
+La simplificación de una sola persona pasó **57/57 pruebas unitarias/de adaptador/cierre y 20/20 de integración** en Docker Jazzy, sin hardware. El escenario nuevo verifica cambios de posición/tamaño/ID, propuesta de avance centrado y giro a ambos lados con caja grande sin avance. La integración comprobó ausencia de publicadores y mensajes de velocidad en `/hri/cmd_vel`, `/nao/cmd_vel` y `/pepper/cmd_vel`. Evidencia: [resultado de la simplificación](results/follow_person_simplified_20261019.json). Colcon, compilación de sintaxis Python y `git diff --check` aprobaron; no hay type-checker estático ni ESLint configurados para este paquete. La compilación de sintaxis no es comprobación de tipos. La repetición de estos cambios con cámara real sigue pendiente.
+
+La verificación software de la entrega original pasó 52 pruebas unitarias/de adaptador/cierre
 y 19 de integración del nuevo modo. Las regresiones de los otros modos y un
 fallo intermitente pendiente de exclusión en MoveVelocity se detallan en
 [la evidencia](results/follow_person_preview_20261019/README.md). No interpretar
 la repetición aprobada de ese caso como fallo corregido; revisarlo antes de
-habilitar seguimiento físico. No hay validación nueva con la cámara real aún.
+habilitar seguimiento físico. El autor aportó una corrida preview aprobada con cámara NAO (133 frames recibidos) y corridas fallidas posteriores por pérdida, caducidad y discontinuidad. Son evidencia de la versión anterior, no aprobación de la simplificación actual ni seguimiento físico. La nueva lógica debe repetirse en el laboratorio.
 
 La solicitud de seguimiento físico queda como siguiente etapa explícita, **no habilitada en esta entrega**. Antes de conectar el controlador a `MoveVelocity`, validar la propuesta con imagen real, tratamiento de pérdidas, parada independiente y condiciones del ensayo. El driver actual no tiene un watchdog independiente de comandos: la pérdida del proveedor o de la comunicación no garantiza una parada física. Un cero en preview no detiene ningún robot.
 

@@ -71,10 +71,25 @@ class FollowControllerTest(unittest.TestCase):
         self.assert_zero(decision)
         self.assertEqual(decision.reason, "target_in_visual_deadband")
 
-    def test_too_close_stops_even_rotation(self) -> None:
-        decision = self.acquire(replace(self.person, height=340.0, center_x=420.0))
+    def test_too_close_centered_stops(self) -> None:
+        decision = self.acquire(replace(self.person, height=340.0))
         self.assert_zero(decision)
         self.assertEqual(decision.reason, "target_too_close_visual")
+
+    def test_too_close_left_allows_centering_only(self) -> None:
+        decision = self.acquire(replace(self.person, height=340.0, center_x=100.0))
+        self.assertEqual((decision.vx, decision.wz), (0.0, 0.10))
+        self.assertEqual(decision.reason, "preview_centering_close")
+
+    def test_too_close_right_allows_centering_only(self) -> None:
+        decision = self.acquire(replace(self.person, height=340.0, center_x=540.0))
+        self.assertEqual((decision.vx, decision.wz), (0.0, -0.10))
+        self.assertEqual(decision.reason, "preview_centering_close")
+
+    def test_large_clipped_box_stops_before_close_centering(self) -> None:
+        decision = self.acquire(replace(self.person, height=340.0, center_x=50.0))
+        self.assert_zero(decision)
+        self.assertEqual(decision.reason, "clipped_detection")
 
     def test_clipping_stops_all_motion(self) -> None:
         self.assert_zero(self.acquire(replace(self.person, center_x=50.0)))
@@ -95,43 +110,72 @@ class FollowControllerTest(unittest.TestCase):
         self.assertEqual(decision.reason, "ambiguous_people")
         self.assert_zero(self.controller.update([self.person], 0.4))
 
-    def test_id_change_latches(self) -> None:
+    def test_id_change_does_not_interrupt_single_person(self) -> None:
         self.acquire()
         decision = self.controller.update([replace(self.person, tracking_id="other")], 0.3)
-        self.assertEqual(decision.reason, "target_discontinuity")
-        self.assert_zero(self.controller.update([self.person], 0.4))
+        self.assertEqual(decision.vx, 0.03)
+        self.assertTrue(decision.locked)
+        self.assertFalse(self.controller.halted)
 
-    def test_tracked_to_untracked_latches(self) -> None:
+    def test_tracked_to_untracked_preserves_lock(self) -> None:
         self.acquire()
-        self.assert_zero(self.controller.update([replace(self.person, tracking_id="")], 0.3))
-        self.assert_zero(self.controller.update([self.person], 0.4))
+        decision = self.controller.update([replace(self.person, tracking_id="")], 0.3)
+        self.assertTrue(decision.locked)
+        self.assertEqual(decision.vx, 0.03)
 
-    def test_untracked_can_lock_but_cannot_change_mode(self) -> None:
+    def test_untracked_to_tracked_preserves_lock(self) -> None:
         untracked = replace(self.person, tracking_id="")
         self.assertTrue(self.acquire(untracked).locked)
-        self.assert_zero(self.controller.update([self.person], 0.3))
+        self.assertEqual(self.controller.update([self.person], 0.3).vx, 0.03)
 
-    def test_large_centroid_jump_latches(self) -> None:
+    def test_large_centroid_jump_changes_heading_without_latching(self) -> None:
         self.acquire()
         decision = self.controller.update([replace(self.person, center_x=450.0)], 0.3)
-        self.assertEqual(decision.reason, "target_discontinuity")
+        self.assertEqual(decision.vx, 0.0)
+        self.assertAlmostEqual(decision.wz, -0.08125)
+        self.assertFalse(self.controller.halted)
 
-    def test_large_size_jump_latches(self) -> None:
+    def test_large_size_jump_updates_forward_proposal(self) -> None:
         self.acquire()
-        self.assert_zero(self.controller.update([replace(self.person, height=240.0)], 0.3))
+        decision = self.controller.update([replace(self.person, height=240.0)], 0.3)
+        self.assertAlmostEqual(decision.vx, 0.01)
+        self.assertFalse(self.controller.halted)
 
-    def test_prelock_identity_change_restarts_count(self) -> None:
+    def test_prelock_identity_changes_still_acquire_after_three_observations(self) -> None:
         self.controller.update([self.person], 0.0)
         other = replace(self.person, tracking_id="other")
         self.assertFalse(self.controller.update([other], 0.1).locked)
-        self.assertFalse(self.controller.update([other], 0.2).locked)
-        self.assertTrue(self.controller.update([other], 0.3).locked)
+        self.assertTrue(self.controller.update([replace(other, tracking_id="")], 0.2).locked)
 
-    def test_prelock_geometric_change_restarts_count(self) -> None:
+    def test_prelock_geometric_changes_still_acquire_after_three_observations(self) -> None:
         self.controller.update([self.person], 0.0)
         other = replace(self.person, center_x=450.0)
         self.controller.update([other], 0.1)
-        self.assertFalse(self.controller.update([other], 0.2).locked)
+        self.assertTrue(self.controller.update([replace(other, height=240.0)], 0.2).locked)
+
+    def test_observed_nao_width_jump_is_not_identity_failure(self) -> None:
+        self.controller = Controller(Config(320, 240))
+        narrow = Person(0.84, "", 20.65, 110.98, 41.28, 218.41)
+        wide = Person(0.90, "", 38.50, 111.36, 77.0, 219.45)
+        self.acquire(narrow)
+        decision = self.controller.update([wide], 0.3)
+        self.assert_zero(decision)
+        self.assertEqual(decision.reason, "clipped_detection")
+        self.assertTrue(decision.locked)
+        self.assertFalse(self.controller.halted)
+        # An unclipped observation can resume proposals without restarting.
+        decision = self.controller.update([replace(wide, center_x=50.0)], 0.4)
+        self.assertEqual((decision.vx, decision.wz), (0.0, 0.10))
+        self.assertEqual(decision.reason, "preview_centering_close")
+
+    def test_missing_after_geometry_and_id_changes_still_latches(self) -> None:
+        self.acquire()
+        self.controller.update([replace(self.person, tracking_id="other", center_x=450.0,
+                                        height=240.0)], 0.3)
+        self.assertEqual(self.controller.update([], 0.4).reason, "person_missing")
+        decision = self.controller.update([self.person], 0.5)
+        self.assert_zero(decision)
+        self.assertEqual(decision.reason, "person_missing")
 
     def test_missing_prelock_resets_count(self) -> None:
         self.controller.update([self.person], 0.0)

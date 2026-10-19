@@ -120,6 +120,7 @@ class Frames:
         self.node = fixture.node
         self.case = case
         self.fixed_stamp = None
+        self.frame_count = 0
         self.telemetry_lock = threading.Lock()
         self.publish_samples = []
         self.publish_error = None
@@ -164,6 +165,14 @@ class Frames:
             person.bbox.center.position.y = 120.0
             person.bbox.size.x = 60.0
             person.bbox.size.y = 100.0
+            if self.case == "single_person_changes":
+                # Abrupt center/size/ID changes are allowed under the declared
+                # single-person assumption. Keep every box inside the frame.
+                phase = (self.frame_count // 5) % 4
+                person.id = ("", "temporary-left", "temporary-right", "")[phase]
+                person.bbox.center.position.x = (160.0, 70.0, 250.0, 160.0)[phase]
+                person.bbox.size.x = (60.0, 100.0, 50.0, 60.0)[phase]
+                person.bbox.size.y = (100.0, 200.0, 200.0, 100.0)[phase]
             frame.detections = [person]
             if self.case == "ambiguous":
                 other = Detection()
@@ -178,6 +187,7 @@ class Frames:
         before_publish = time.monotonic()
         try:
             self.publisher.publish(frame)
+            self.frame_count += 1
         finally:
             after_publish = time.monotonic()
             with self.telemetry_lock:
@@ -274,6 +284,7 @@ def main():
         cases = [("nao_valid", "valid", "nao", True),
                  ("pepper_valid", "valid", "pepper", True),
                  ("tracked_id", "tracked_id", "nao", True),
+                 ("single_person_changes", "single_person_changes", "nao", True),
                  ("custom_topic", "valid", "nao", True),
                  ("no_stream", "no_stream", "nao", False),
                  ("empty", "empty", "nao", False),
@@ -316,6 +327,15 @@ def main():
                     passed = passed and result.get("message") == "no_target_acquired"
                 if name in ("late_loss", "duplicate_stamp"):
                     passed = passed and any(p.get("locked") is True for p in previews)
+                if name == "single_person_changes":
+                    close = [p for p in previews if p.get("reason") == "preview_centering_close"]
+                    passed = (passed
+                              and any(p.get("vx_m_s", 0.0) > 0.0 for p in previews)
+                              and any(p.get("wz_rad_s", 0.0) > 0.0 for p in close)
+                              and any(p.get("wz_rad_s", 0.0) < 0.0 for p in close)
+                              and all(p.get("vx_m_s") == 0.0 for p in close)
+                              and not any(p.get("reason") == "target_discontinuity"
+                                          for p in previews))
                 report["checks"].append({"name": name, "passed": bool(passed),
                     "application": result, "launch_exit_code": code,
                     "velocity_messages": counts, "velocity_publishers_seen": publishers,

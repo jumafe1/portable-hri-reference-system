@@ -1,9 +1,10 @@
 """ROS-independent, preview-only visual following controller.
 
 Outputs are suggestions, not authorized robot commands. Box size is a visual
-proxy, NOT metric distance or collision clearance. An untracked box supplies
-only approximate spatial continuity, never an assurance of personal identity.
-After acquiring a target, any loss of continuity requires a new Controller.
+proxy, NOT metric distance or collision clearance. This controlled experiment
+assumes exactly one participant; the sole eligible detection is the target.
+No identity association is attempted, even when tracking IDs are supplied.
+After acquiring a target, missing/ambiguous/invalid input requires a new Controller.
 The turn sign assumes a forward-facing camera aligned with the robot base;
 this stage does not compensate for head motion or camera extrinsics.
 """
@@ -65,7 +66,6 @@ class Controller:
 
     def __init__(self, config: Config) -> None:
         self.config = config
-        self._candidate: Person | None = None
         self._count = 0
         self._locked = False
         self._latched: str | None = None
@@ -91,7 +91,6 @@ class Controller:
     def _reject(self, reason: str) -> Decision:
         if self._locked:
             return self.stop(reason)
-        self._candidate = None
         self._count = 0
         return self._zero(reason)
 
@@ -128,16 +127,6 @@ class Controller:
             and person.center_y + person.height / 2 <= self.config.image_height
         )
 
-    def _continuous(self, previous: Person, current: Person) -> bool:
-        if current.tracking_id != previous.tracking_id:
-            return False
-        return (
-            abs(current.center_x - previous.center_x) / self.config.image_width <= 0.15
-            and abs(current.center_y - previous.center_y) / self.config.image_height <= 0.15
-            and 2 / 3 <= current.width / previous.width <= 1.5
-            and 2 / 3 <= current.height / previous.height <= 1.5
-        )
-
     def update(self, people: list[Person], now: float) -> Decision:
         """Accept one fresh image's people; do not concatenate robot streams."""
         if self._latched is not None:
@@ -161,18 +150,11 @@ class Controller:
         if len(eligible) != 1:
             return self._reject("ambiguous_people")
         person = eligible[0]
-        if self._candidate is not None and not self._continuous(self._candidate, person):
-            if self._locked:
-                return self.stop("target_discontinuity")
-            self._count = 0
-        self._candidate = person
         self._count += 1
         if self._count < 3:
             return self._zero("acquiring_target")
         self._locked = True
         height_ratio = person.height / self.config.image_height
-        if height_ratio > self.config.target_height_ratio + 0.05:
-            return self._zero("target_too_close_visual")
         clipped = (
             person.center_x - person.width / 2 <= 0
             or person.center_y - person.height / 2 <= 0
@@ -183,6 +165,12 @@ class Controller:
             return self._zero("clipped_detection")
         error = (person.center_x - self.config.image_width / 2) / (self.config.image_width / 2)
         wz = 0.0 if abs(error) <= 0.08 else max(-0.10, min(0.10, -0.20 * error))
+        # Preview only: apparent size gates advance, not centering. This is
+        # not clearance to rotate physically; clipped boxes remain zero above.
+        if height_ratio > self.config.target_height_ratio + 0.05:
+            reason = "preview_centering_close" if wz != 0 else "target_too_close_visual"
+            self._decision = Decision(0.0, wz, reason, True)
+            return self._decision
         vx = 0.0
         if abs(error) <= 0.15 and height_ratio < self.config.target_height_ratio - 0.05:
             vx = min(0.03, 0.10 * (self.config.target_height_ratio - height_ratio))

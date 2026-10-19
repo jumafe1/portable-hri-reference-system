@@ -1,4 +1,4 @@
-"""Visual following: preview by default, explicitly confirmed short motion trial."""
+"""Visual following: preview by default, explicitly confirmed bounded motion."""
 
 import argparse
 import json
@@ -31,10 +31,12 @@ def parse_args(argv=None):
     parser.add_argument("--expected-frame", required=True)
     parser.add_argument("--minimum-confidence", type=float, default=0.65)
     parser.add_argument("--target-height-ratio", type=float, default=0.6)
-    parser.add_argument("--timeout", type=float, default=20.0)
+    parser.add_argument("--timeout", type=float, default=120.0,
+                        help="Observation limit in seconds (1–300); motion uses min(timeout, duration).")
     parser.add_argument("--enable-motion", action="store_true")
     parser.add_argument("--confirm", default="")
-    parser.add_argument("--duration", type=float, default=2.0)
+    parser.add_argument("--duration", type=float, default=2.0,
+                        help="Opt-in motion duration in seconds (0.1–300), default 2.")
     args = parser.parse_args(remove_ros_args(args=sys.argv)[1:] if argv is None else argv)
     if not 1 <= args.image_width <= 8192 or not 1 <= args.image_height <= 8192:
         parser.error("Use actual image dimensions in [1, 8192].")
@@ -44,11 +46,11 @@ def parse_args(argv=None):
         parser.error("Follow preview arguments must be finite.")
     if not 0.5 <= args.minimum_confidence <= 1 or not 0.3 <= args.target_height_ratio <= 0.8:
         parser.error("Use confidence in [0.5, 1] and target height ratio in [0.3, 0.8].")
-    if not 1 <= args.timeout <= 60:
-        parser.error("Preview timeout must be in [1, 60] seconds.")
+    if not 1 <= args.timeout <= 300:
+        parser.error("Follow timeout must be in [1, 300] seconds.")
     if args.enable_motion and (args.confirm != "MOVER" or not math.isfinite(args.duration)
-                               or not 0.1 <= args.duration <= 5.0):
-        parser.error("Motion requires --confirm MOVER and finite duration in [0.1, 5] seconds.")
+                               or not 0.1 <= args.duration <= 300.0):
+        parser.error("Motion requires --confirm MOVER and finite duration in [0.1, 300] seconds.")
     return args
 
 

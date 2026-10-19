@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "hri_reference_app/
 
 from hri_capability_interfaces.msg import PersonDetection2D, PersonDetection2DArray
 from follow_controller import Config, Controller, Person
-from follow_session import ABORT, PROVIDER, FollowSession
+from follow_session import ABORT, PROVIDER, SUCCEED, FollowSession
 
 
 class FollowSessionTest(unittest.TestCase):
@@ -192,6 +192,71 @@ class FollowSessionTest(unittest.TestCase):
         self.session.on_frame(frame)
         self.assertTrue(self.session.controller.halted)
         self.assertEqual(self.session.controller.tick(1.0).reason, "unexpected_people_provider")
+
+    def run_timed_follow(self, duration, timeout, *, motion=True, cancel_after=None):
+        """Advance a fake clock and feed fresh detections; never wait in real time."""
+        self.acquire()
+        self.session.args.duration = duration
+        self.session.args.timeout = timeout
+        if motion:
+            self.session.motion = MagicMock()
+            self.session.motion.send.return_value = ""
+        clock = [0.3]
+        person = Person(0.9, "person-1", 320.0, 240.0, 100.0, 120.0)
+
+        def advance(seconds):
+            clock[0] += seconds
+            self.session.controller.update([person], clock[0])
+            if cancel_after is not None and clock[0] >= 0.3 + cancel_after:
+                self.session.cancelled.is_set.return_value = True
+                self.sends_at_cancel = self.session.motion.send.call_count
+
+        self.session.cancelled.wait.side_effect = advance
+        blackboard = {}
+        with patch("follow_session.time.monotonic", side_effect=lambda: clock[0]), \
+                patch("follow_session.rclpy.ok", return_value=True):
+            outcome = self.session.observe(blackboard)
+        return outcome, blackboard, clock[0] - 0.3
+
+    def test_two_minute_timeout_caps_five_minute_duration(self):
+        outcome, board, elapsed = self.run_timed_follow(300.0, 120.0)
+        self.assertEqual(outcome, SUCCEED)
+        self.assertEqual(board["message"], "follow_trial_completed")
+        self.assertGreaterEqual(elapsed, 120.0)
+        self.assertLess(elapsed, 120.051)
+
+    def test_duration_caps_longer_timeout(self):
+        outcome, board, elapsed = self.run_timed_follow(120.0, 300.0)
+        self.assertEqual(outcome, SUCCEED)
+        self.assertEqual(board["message"], "follow_trial_completed")
+        self.assertGreaterEqual(elapsed, 120.0)
+        self.assertLess(elapsed, 120.051)
+
+    def test_five_minutes_are_possible_only_with_matching_timeout(self):
+        outcome, _, elapsed = self.run_timed_follow(300.0, 300.0)
+        self.assertEqual(outcome, SUCCEED)
+        self.assertGreaterEqual(elapsed, 300.0)
+        self.assertLess(elapsed, 300.051)
+        self.assertEqual(self.session.publish_preview.call_args.args[0].vx, 0.0)
+
+    def test_preview_uses_timeout_without_creating_motion(self):
+        outcome, board, elapsed = self.run_timed_follow(2.0, 120.0, motion=False)
+        self.assertEqual(outcome, SUCCEED)
+        self.assertEqual(board["message"], "preview_completed")
+        self.assertGreaterEqual(elapsed, 120.0)
+        self.assertLess(elapsed, 120.051)
+        self.assertIsNone(self.session.motion)
+
+    def test_cancel_interrupts_long_trial_before_deadline(self):
+        outcome, board, elapsed = self.run_timed_follow(300.0, 300.0, cancel_after=0.2)
+        self.assertEqual(outcome, ABORT)
+        self.assertEqual(board["message"], "cancelled_or_ros_shutdown")
+        self.assertLess(elapsed, 0.251)
+        self.assertTrue(self.session.finished)
+        self.assertGreater(self.sends_at_cancel, 0)
+        self.assertEqual(self.session.motion.send.call_count, self.sends_at_cancel)
+        final = self.session.publish_preview.call_args.args[0]
+        self.assertEqual((final.vx, final.wz), (0.0, 0.0))
 
     def test_wrong_camera_frame_permanently_stops(self):
         frame = self.frame()

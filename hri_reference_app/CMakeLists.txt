@@ -38,6 +38,7 @@ install(
     scripts/follow_session.py
     scripts/follow_controller.py
     scripts/follow_motion.py
+    scripts/graceful_server.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

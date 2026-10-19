@@ -47,6 +47,7 @@ class MotionFixture(Fixture):
         self.reset()
         self.robot = robot
         self.case_start = time.monotonic()
+        self.interrupted_at = None
 
 
 class MotionFrames:
@@ -111,7 +112,7 @@ class MotionFrames:
             raise RuntimeError(self.error)
 
 
-def launch(arguments, path, fixture=None, interrupt=False):
+def launch(arguments, path, fixture=None, interrupt=None):
     command = ["ros2", "launch", "hri_reference_app", "hri_app.launch.py",
                "mode:=follow_person", "enable_motion:=true", "confirm:=MOVER",
                "image_width:=320", "image_height:=240", "expected_frame:=test_camera",
@@ -123,11 +124,21 @@ def launch(arguments, path, fixture=None, interrupt=False):
             if interrupt:
                 if not wait_until(fixture.moved, 15):
                     raise RuntimeError("No backend command before SIGINT")
-                output = path.read_text(encoding="utf-8")
-                match = re.search(r"\[hri_app-\d+\]: process started with pid \[(\d+)\]", output)
-                if not match:
-                    raise RuntimeError("Missing child PID for application-only interrupt")
-                os.kill(int(match.group(1)), signal.SIGINT)
+                fixture.interrupted_at = time.monotonic()
+                if interrupt == "process_group":
+                    # A terminal sends Ctrl+C to its foreground process group,
+                    # not solely to the application child.
+                    os.killpg(process.pid, signal.SIGINT)
+                elif interrupt == "launch":
+                    process.send_signal(signal.SIGINT)
+                elif interrupt == "application":
+                    output = path.read_text(encoding="utf-8")
+                    match = re.search(r"\[hri_app-\d+\]: process started with pid \[(\d+)\]", output)
+                    if not match:
+                        raise RuntimeError("Missing child PID for application-only interrupt")
+                    os.kill(int(match.group(1)), signal.SIGINT)
+                else:
+                    raise ValueError(f"Unknown interrupt target: {interrupt}")
             process.wait(timeout=30)
         finally:
             if process.poll() is None:
@@ -169,8 +180,9 @@ def main():
         fixture = MotionFixture(node)
         rejected = [("confirmation", "confirm:=NO"), ("empty_confirmation", "confirm:="),
                     ("malformed_opt_in", "enable_motion:=yes"),
-                    ("duration_zero", "duration:=0"), ("duration_long", "duration:=5.1"),
-                    ("duration_nan", "duration:=nan"), ("duration_inf", "duration:=inf")]
+                    ("duration_zero", "duration:=0"), ("duration_long", "duration:=301"),
+                    ("duration_nan", "duration:=nan"), ("duration_inf", "duration:=inf"),
+                    ("timeout_long", "timeout:=301")]
         for name, argument in rejected:
             fixture.begin("nao")
             code, output = launch(["robot:=nao", argument], evidence / f"invalid_{name}.log")
@@ -201,7 +213,8 @@ def main():
         cases = [("nao", "directions"), ("pepper", "directions"),
                  ("nao", "person_loss"), ("nao", "stream_loss"),
                  ("nao", "stale_frame"), ("nao", "ambiguous"),
-                 ("nao", "interrupt"), ("nao", "duplicate_commands"),
+                 ("nao", "interrupt"), ("nao", "launch_interrupt_long"),
+                 ("nao", "process_group_interrupt_long"), ("nao", "duplicate_commands"),
                  ("nao", "duplicate_status"), ("nao", "missing_backend")]
         for robot, case in cases:
             fixture.begin(robot)
@@ -215,9 +228,21 @@ def main():
                 node.destroy_subscription(fixture.subscriptions.pop(0))
             frames = MotionFrames(fixture, case)
             try:
-                code, output = launch([f"robot:={robot}"], evidence / f"{robot}_{case}.log",
-                                      fixture, interrupt=case == "interrupt")
-                result = parse_result(output)
+                arguments = [f"robot:={robot}"]
+                interrupt = {"interrupt": "application", "launch_interrupt_long": "launch",
+                             "process_group_interrupt_long": "process_group"}.get(case)
+                if case == "launch_interrupt_long":
+                    arguments += ["duration:=300.0", "timeout:=120.0"]
+                elif case == "process_group_interrupt_long":
+                    arguments += ["duration:=300.0", "timeout:=300.0"]
+                code, output = launch(arguments, evidence / f"{robot}_{case}.log",
+                                      fixture, interrupt=interrupt)
+                try:
+                    result = parse_result(output)
+                except RuntimeError as error:
+                    # Preserve backend evidence even when shutdown loses the
+                    # result JSON. Missing required result fields still fail.
+                    result = {"parse_error": str(error)}
                 time.sleep(0.2)
                 commands = fixture.recorders[f"/{robot}/cmd_vel"].since(fixture.case_start)
                 other = "pepper" if robot == "nao" else "nao"
@@ -246,7 +271,24 @@ def main():
                     passed = passed and result.get("message") == "person_missing"
                 if case in ("stream_loss", "stale_frame"):
                     passed = passed and result.get("message") in ("stale_or_future_image", "stale_detection")
+                if interrupt:
+                    passed = passed and result.get("message") == "cancelled_or_ros_shutdown"
+                zero_delays = [stamp - fixture.interrupted_at for stamp, values in commands
+                               if fixture.interrupted_at is not None
+                               and stamp >= fixture.interrupted_at and zero(values)]
+                first_zero_delay = min(zero_delays) if zero_delays else None
+                remained_zero = None
+                if interrupt:
+                    remained_zero = bool(zero_delays) and all(
+                        zero(values) for stamp, values in commands
+                        if stamp >= fixture.interrupted_at + first_zero_delay)
+                    passed = (passed and first_zero_delay is not None
+                              and first_zero_delay <= 1.0 and remained_zero)
                 report["checks"].append({"name": f"{robot}_{case}", "passed": bool(passed),
+                    "launch_arguments": arguments, "interrupt_target": interrupt,
+                    "first_zero_after_interrupt_s": first_zero_delay,
+                    "zero_deadline_s": 1.0 if interrupt else None,
+                    "remained_zero_after_stop": remained_zero,
                     "application": result, "launch_exit_code": code,
                     "backend_commands": commands, "other_backend_commands": other_commands,
                     "source_frames": frames.sent, "preview_count": len(fixture.previews)})

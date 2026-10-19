@@ -268,7 +268,7 @@ def main():
             raise RuntimeError(f"Domain is not isolated; refusing to run: {strangers}")
         fixture = Fixture(node)
         rejected = [("width", "image_width:=0"), ("height", "image_height:=-1"),
-                    ("timeout", "timeout:=61"), ("nan_timeout", "timeout:=nan"),
+                    ("timeout", "timeout:=301"), ("nan_timeout", "timeout:=nan"),
                     ("confidence", "minimum_confidence:=1.1"),
                     ("height_ratio", "target_height_ratio:=0")]
         for name, argument in rejected:

@@ -1,8 +1,8 @@
-# Seguimiento visual: preview y ensayo corto supervisado
+# Seguimiento visual: preview y seguimiento supervisado acotado
 
 `hri_app` incorpora el modo YASMIN `follow_person` como **previsualización por defecto**. Adquiere `DetectPeople` mediante Capabilities2 y `YoloDetectPeople`, procesa `/hri/people` y publica diagnóstico en `/hri/follow_person/preview` (`std_msgs/msg/String`, JSON). Con activación explícita puede adquirir además `MoveVelocity` y enviar las decisiones a `NaoqiMoveVelocity`. No se añade otro proveedor.
 
-**Sin `enable_motion:=true`, no se adquiere MoveVelocity ni se crea un publicador Twist.** La activación requiere además `confirm:=MOVER`; el intervalo de generación de comandos se acota a `duration` (0.1–5 s, predeterminado 2 s) y a `timeout`, el menor de ambos. No se modifica la vida autónoma. El ensayo físico de seguimiento aún debe validarse con el robot; las pruebas software no lo sustituyen.
+**Sin `enable_motion:=true`, no se adquiere MoveVelocity ni se crea un publicador Twist.** La activación requiere además `confirm:=MOVER`; el intervalo de generación de comandos se acota a `duration` (0.1–300 s, predeterminado 2 s) y a `timeout` (1–300 s, predeterminado 120 s), el menor de ambos. No se modifica la vida autónoma. El seguimiento físico aún debe validarse con el robot; las pruebas software no lo sustituyen. El modo independiente `move_velocity` conserva su límite de 5 s.
 
 ## Arquitectura de esta etapa
 
@@ -117,7 +117,7 @@ Comprobar que YOLO se suscribe a `/nao/camera/front/image_raw` y que el `frame_i
 ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=ANCHO_REAL image_height:=ALTO_REAL expected_frame:=FRAME_REAL minimum_confidence:=0.65 target_height_ratio:=0.60 timeout:=20.0
 ```
 
-El tiempo de observación admite entre 1 y 60 segundos; preparación y limpieza añaden tiempo a la ejecución completa. Para una instancia YOLO con un tópico diferente, agregar `detections_topic:=/ruta/correcta/detections`; no basta con cambiar `robot`.
+El tiempo de observación admite entre 1 y 300 segundos, con 120 s por defecto; preparación y limpieza añaden tiempo a la ejecución completa. Para una instancia YOLO con un tópico diferente, agregar `detections_topic:=/ruta/correcta/detections`; no basta con cambiar `robot`.
 
 ### Terminal 4: observar sin actuar
 
@@ -174,9 +174,17 @@ ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person i
 
 Permanecer visible y centrado antes de iniciar. Empezar quieto; no caminar hasta comprobar el sentido de respuesta. Probar avance y giro en ensayos separados. Una persona demasiado cerca o una caja recortada pueden producir solo ceros; no acercarse al robot para forzar el giro. Ante fallo, revisar y reiniciar manualmente: no se reanuda automáticamente tras perder el objetivo.
 
-YASMIN adquiere DetectPeople y MoveVelocity, verifica proveedores, observa y transmite a unos 20 Hz. Al terminar o fallar, solicita cero durante 0.4 s, comprueba estado `stopped`, libera MoveVelocity y después DetectPeople. `Ctrl+C` se trata como cancelación cuando llega al proceso de aplicación; el cierre completo del launch/red/proveedor puede impedir la limpieza, por lo que **no reemplaza una parada física**.
+Para la configuración solicitada de duración máxima de cinco minutos y timeout de dos minutos:
 
-Resultados: `people_released` y `motion_released` informan liberación; `released` requiere ambas. `stop_acknowledged` solo confirma estado software del proveedor. `application_succeeded` significa ensayo acotado completado, incluso si todas las órdenes fueron cero. `physical_success_verified` sigue en `false`: registrar por separado si NAO efectivamente siguió y se detuvo. El plazo de 2–5 s limita la generación de órdenes, no garantiza detener motores en ese plazo.
+```bash
+ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=320 image_height:=240 expected_frame:=CameraTop_optical_frame enable_motion:=true confirm:=MOVER duration:=300.0 timeout:=120.0
+```
+
+Este comando genera órdenes durante **como máximo 120 s**, no 300: aplica `min(duration, timeout)`. Para permitir cinco minutos completos, ambos deben valer `300.0`. `timeout` no es el tiempo que tolera sin ver a la persona: pérdida de objetivo, antigüedad de imagen y watchdog mantienen sus límites breves. Ampliar la duración no acredita estabilidad durante cinco minutos ni seguridad frente a obstáculos.
+
+YASMIN adquiere DetectPeople y MoveVelocity, verifica proveedores, observa y transmite a unos 20 Hz. Al terminar o fallar, solicita cero durante 0.4 s, comprueba estado `stopped`, libera MoveVelocity y después DetectPeople. `Ctrl+C` solicita cancelación. En follow_person, un supervisor mantiene Capabilities2 disponible durante un margen máximo de 8 s para esa limpieza; al salir la aplicación solicita el cierre inmediato del servidor. El cierre del servidor escala de SIGINT a SIGTERM y SIGKILL con esperas acotadas si no responde. La caída de red/proveedor o una terminación forzada puede impedir la entrega de parada: **Ctrl+C no reemplaza una parada física**.
+
+Resultados: `people_released` y `motion_released` informan liberación; `released` requiere ambas. `stop_acknowledged` solo confirma estado software del proveedor. `application_succeeded` significa ensayo acotado completado, incluso si todas las órdenes fueron cero. Una cancelación puede terminar como `application_failed` con mensaje `cancelled_or_ros_shutdown` y liberación correcta. `physical_success_verified` sigue en `false`: registrar por separado si NAO efectivamente siguió y se detuvo. El plazo configurado limita la generación de órdenes, no garantiza detener motores en ese plazo.
 
 El proveedor conserva watchdog de comandos de 0.3 s y comprueba publicadores únicos, estabilidad del grafo durante 0.5 s y continuidad del GID de origen. Conflictos quedan bloqueados hasta liberar y readquirir. El descubrimiento DDS es asíncrono: no equivale a exclusión distribuida instantánea ni autenticación; otro publicador directo al driver aún podría ordenar movimiento. La caída total del proveedor o de la red no queda cubierta por su watchdog local.
 
@@ -188,7 +196,9 @@ ROS_LOCALHOST_ONLY=1 ROS_DOMAIN_ID=182 python3 tests/unified_hri_follow_motion_p
 
 ## Evidencia y límites
 
-La integración con movimiento pasó **87/87 unitarias, 18/18 integración ampliada, 20/20 regresión preview, 12/12 MoveVelocity en dos corridas, 22/22 proveedor directo y 3/3 conflictos de origen**. Colcon, sintaxis Python y CTest 1/1 aprobaron. Todo con interfaces simuladas, sin robots. Informes y fallo previo conservados en [evidencia del incremento](results/follow_person_motion_20261019/README.md).
+La ampliación a 300 s y corrección de Ctrl+C pasó **105/105 unitarias, 21/21 integración dos veces y 20/20 regresión preview**. La repetición comprueba cero recibido en menos de 1 s tras SIGINT al hijo, al launch y al grupo completo, sin órdenes posteriores distintas de cero, con confirmación de parada y liberación de ambas capacidades. Se verifican 120/300 s con reloj simulado; las ejecuciones ROS con configuración larga se cancelan anticipadamente. No se ha validado una sesión física ni una sesión ROS continua de cinco minutos. Compilación, sintaxis y CTest 1/1 aprobaron; no hay type-checker estático ni ESLint configurados. [Evidencia y fallo de cierre anterior](results/follow_person_duration_20261019/README.md).
+
+La integración inicial con movimiento pasó **87/87 unitarias, 18/18 integración ampliada, 20/20 regresión preview, 12/12 MoveVelocity en dos corridas, 22/22 proveedor directo y 3/3 conflictos de origen**. Colcon, sintaxis Python y CTest 1/1 aprobaron. Todo con interfaces simuladas, sin robots. Informes y fallo previo conservados en [evidencia del incremento](results/follow_person_motion_20261019/README.md).
 
 La regresión adicional de los modos anteriores quedó 7/8 en dos repeticiones: Pepper MoveRelative informó servicio no disponible. Se conserva como hallazgo pendiente, sin modificar ese proveedor ni afirmar que toda la aplicación pasó sus regresiones. No afecta a la evidencia específica de FollowPerson, que utiliza MoveVelocity, no MoveRelative.
 

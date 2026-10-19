@@ -22,6 +22,8 @@ class FollowMotionArgumentsTest(unittest.TestCase):
     def test_default_remains_preview(self):
         args = parse_args(self.BASE)
         self.assertFalse(args.enable_motion)
+        self.assertEqual(args.duration, 2.0)
+        self.assertEqual(args.timeout, 120.0)
 
     def test_confirmation_alone_does_not_enable_motion(self):
         args = parse_args(self.BASE + ["--confirm", "MOVER"])
@@ -39,18 +41,31 @@ class FollowMotionArgumentsTest(unittest.TestCase):
                     parse_args(self.BASE + ["--enable-motion"] + confirmation)
 
     def test_invalid_motion_duration_is_rejected(self):
-        for duration in ("0", "-1", "0.09", "5.01", "nan", "inf", "-inf"):
+        for duration in ("0", "-1", "0.09", "300.01", "301", "nan", "inf", "-inf"):
             with self.subTest(duration=duration), redirect_stderr(io.StringIO()):
                 with self.assertRaises(SystemExit):
                     parse_args(self.BASE + ["--enable-motion", "--confirm", "MOVER",
                                             "--duration", duration])
 
     def test_bounded_duration_endpoints_are_accepted(self):
-        for duration in ("0.1", "5.0"):
+        for duration in ("0.1", "5.0", "120.0", "300.0"):
             with self.subTest(duration=duration):
                 args = parse_args(self.BASE + ["--enable-motion", "--confirm", "MOVER",
                                               "--duration", duration])
                 self.assertEqual(args.duration, float(duration))
+
+    def test_bounded_timeout_endpoints_are_accepted(self):
+        for timeout in ("1", "120", "300"):
+            with self.subTest(timeout=timeout):
+                args = parse_args(self.BASE + ["--timeout", timeout])
+                self.assertEqual(args.timeout, float(timeout))
+                self.assertFalse(args.enable_motion)
+
+    def test_invalid_timeout_is_rejected(self):
+        for timeout in ("0", "0.99", "300.01", "301", "nan", "inf", "-inf"):
+            with self.subTest(timeout=timeout), redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    parse_args(self.BASE + ["--timeout", timeout])
 
 
 class FollowMotionTransportTest(unittest.TestCase):

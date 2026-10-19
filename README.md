@@ -8,8 +8,9 @@ Integración y pruebas reproducibles de la arquitectura portable HRI sobre ROS 2
 Capabilities2 y calcula propuestas limitadas de avance/giro para una única persona.
 **Por defecto solo publica diagnóstico, sin activar MoveVelocity.** Con
 `enable_motion:=true confirm:=MOVER` adquiere también `MoveVelocity` para un ensayo
-acotado a un máximo de cinco segundos de generación de órdenes, con parada y
-liberación al terminar. Validación software realizada; seguimiento físico aún
+con `duration` de hasta 300 s y `timeout` predeterminado de 120 s; aplica el menor.
+Mantiene preview por defecto y duración predeterminada de 2 s. Solicita parada y
+liberación al terminar o cancelar con Ctrl+C. Validación software realizada; seguimiento físico aún
 pendiente. Preparación, comando NAO y límites de la parada en [FOLLOW_PERSON.md](FOLLOW_PERSON.md).
 
 ## Velocidad continua portable

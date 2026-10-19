@@ -1,0 +1,23 @@
+{
+  "started_utc": "2026-10-19T23:10:35.087971+00:00",
+  "checks": [
+    {
+      "name": "duplicate_input_latches_zero",
+      "passed": true
+    },
+    {
+      "name": "duplicate_backend_latches_zero",
+      "passed": true
+    },
+    {
+      "name": "replacement_source_gid_rejected",
+      "passed": true
+    }
+  ],
+  "evidence_directory": "/tmp/portable-hri-velocity-exclusivity-zk8q3swc",
+  "limits": [
+    "Software-only: no physical stop verified.",
+    "DDS graph discovery is asynchronous, not a distributed lock."
+  ],
+  "passed": true
+}

@@ -1,0 +1,198 @@
+{
+  "started_utc": "2026-10-19T23:21:08.100641+00:00",
+  "evidence_directory": "/tmp/portable-hri-app-probe-mazvo6_i",
+  "limits": [
+    "Software-only; no physical movement verified.",
+    "Run sequentially: launchers share a SQLite path across ROS domains."
+  ],
+  "fixture_ready": true,
+  "fixture_timing": {
+    "nao": {
+      "samples": 89,
+      "maximum_gap_s": 0.10488749999785796
+    },
+    "pepper": {
+      "samples": 89,
+      "maximum_gap_s": 0.10447775099601131
+    },
+    "detections": {
+      "samples": 89,
+      "maximum_gap_s": 0.10235979099525139
+    }
+  },
+  "checks": [
+    {
+      "name": "movement_requires_confirmation",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-23-21-09-566929-docker-desktop-13545\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Movement requires confirm:=MOVER\n"
+    },
+    {
+      "name": "movement_rejects_out_of_bounds",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-23-21-09-693535-docker-desktop-13548\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Movement exceeds x=0.5 m, y=0.3 m or theta=pi/2 rad\n"
+    },
+    {
+      "name": "nao_speak",
+      "passed": true,
+      "result": {
+        "outcome": "application_succeeded",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/Speak",
+        "requested_provider": "hri_naoqi_providers/NaoSpeak",
+        "provider": "hri_naoqi_providers/NaoSpeak",
+        "message": "simulated_speech",
+        "released": true,
+        "final_state": ""
+      },
+      "backend_events": [
+        [
+          "speak",
+          "nao",
+          "Prueba de voz simulada."
+        ]
+      ],
+      "output_tail": ""
+    },
+    {
+      "name": "nao_detect_people",
+      "passed": true,
+      "result": {
+        "outcome": "application_succeeded",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "requested_provider": "hri_yolo_providers/YoloDetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "message": "person_detected",
+        "people": [
+          {
+            "confidence": 0.91,
+            "tracking_id": "simulated-person",
+            "center_x": 100.0,
+            "center_y": 80.0,
+            "width": 50.0,
+            "height": 100.0
+          }
+        ],
+        "released": true,
+        "last_frame_stamp": {
+          "nanosec": 39760253,
+          "sec": 1792452072
+        },
+        "final_state": ""
+      },
+      "backend_events": [],
+      "output_tail": ""
+    },
+    {
+      "name": "nao_move_relative",
+      "passed": true,
+      "result": {
+        "outcome": "application_succeeded",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/MoveRelative",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "request": {
+          "x_m": 0.1,
+          "y_m": 0.0,
+          "theta_rad": 0.0
+        },
+        "achieved": {
+          "theta_rad": 0.0,
+          "y_m": 0.0,
+          "x_m": 0.10000000149011612
+        },
+        "message": "motion_completed",
+        "released": true,
+        "odometry_retries": 1
+      },
+      "backend_events": [
+        [
+          "move_relative",
+          "nao",
+          0.10000000149011612
+        ]
+      ],
+      "output_tail": ""
+    },
+    {
+      "name": "pepper_speak",
+      "passed": true,
+      "result": {
+        "outcome": "application_succeeded",
+        "robot": "pepper",
+        "capability": "hri_capability_interfaces/Speak",
+        "requested_provider": "hri_naoqi_providers/NaoSpeak",
+        "provider": "hri_naoqi_providers/NaoSpeak",
+        "message": "simulated_speech",
+        "released": true,
+        "final_state": ""
+      },
+      "backend_events": [
+        [
+          "speak",
+          "pepper",
+          "Prueba de voz simulada."
+        ]
+      ],
+      "output_tail": ""
+    },
+    {
+      "name": "pepper_detect_people",
+      "passed": true,
+      "result": {
+        "outcome": "application_succeeded",
+        "robot": "pepper",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "requested_provider": "hri_yolo_providers/YoloDetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "message": "person_detected",
+        "people": [
+          {
+            "confidence": 0.91,
+            "tracking_id": "simulated-person",
+            "center_x": 100.0,
+            "center_y": 80.0,
+            "width": 50.0,
+            "height": 100.0
+          }
+        ],
+        "released": true,
+        "last_frame_stamp": {
+          "nanosec": 239286296,
+          "sec": 1792452076
+        },
+        "final_state": ""
+      },
+      "backend_events": [],
+      "output_tail": ""
+    },
+    {
+      "name": "pepper_move_relative",
+      "passed": false,
+      "result": {
+        "outcome": "application_failed",
+        "robot": "pepper",
+        "capability": "hri_capability_interfaces/MoveRelative",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+        "request": {
+          "x_m": 0.1,
+          "y_m": 0.0,
+          "theta_rad": 0.0
+        },
+        "achieved": {
+          "theta_rad": 0.0,
+          "y_m": 0.0,
+          "x_m": 0.0
+        },
+        "message": "move_to_service_unavailable",
+        "released": true,
+        "odometry_retries": 0
+      },
+      "backend_events": [],
+      "output_tail": "es/MoveRelative\", \"requested_provider\": \"hri_naoqi_providers/NaoqiMoveRelative\", \"provider\": \"hri_naoqi_providers/NaoqiMoveRelative\", \"request\": {\"x_m\": 0.1, \"y_m\": 0.0, \"theta_rad\": 0.0}, \"achieved\": {\"theta_rad\": 0.0, \"y_m\": 0.0, \"x_m\": 0.0}, \"message\": \"move_to_service_unavailable\", \"released\": true, \"odometry_retries\": 0}\n[ERROR] [hri_app-2]: process has died [pid 13732, exit code 1, cmd '/workspace/install/hri_reference_app/lib/hri_reference_app/hri_app --mode move_relative --robot pepper --x 0.1 --y 0.0 --theta 0.0 --confirm MOVER --ros-args -r __node:=portable_hri_app'].\n[INFO] [capabilities2_server_node-1]: sending signal 'SIGINT' to process[capabilities2_server_node-1]\n[capabilities2_server_node-1] [INFO] [1792452077.898416839] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[capabilities2_server_node-1] [WARN] [1792452077.902160464] [capabilities]: bond broken for id: 7963fbaf-a508-4dfc-ad9a-9311d2ff6b22\n[INFO] [capabilities2_server_node-1]: process has finished cleanly [pid 13731]\n"
+    }
+  ],
+  "passed": false
+}

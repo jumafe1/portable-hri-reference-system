@@ -18,8 +18,9 @@ import time
 
 import rclpy
 from geometry_msgs.msg import Twist
-from rclpy.executors import MultiThreadedExecutor
+from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
+from std_msgs.msg import String
 
 from capabilities_naoqi_move_velocity_probe import Recorder, software_guard, wait_until, zero
 
@@ -92,11 +93,13 @@ def main():
               "limits": ["Fake cmd_vel subscribers; no physical movement or stop is verified."]}
     rclpy.init()
     node = Node("software_unified_velocity_probe")
-    executor = MultiThreadedExecutor(num_threads=4)
+    executor = SingleThreadedExecutor()
     executor.add_node(node)
     spin_thread = threading.Thread(target=executor.spin, daemon=True)
     spin_thread.start()
     recorders = {robot: Recorder() for robot in ("nao", "pepper")}
+    statuses = Recorder()
+    node.create_subscription(String, "/hri/move_velocity/status", statuses.status, 100)
     subscriptions = {}
     try:
         time.sleep(1.0)
@@ -144,6 +147,8 @@ def main():
                       and zero(commands[-1][1]) and not recorders[other].since(start))
             report["checks"].append({"name": f"{robot}_routing_stream_stop_release", "passed": passed,
                                      "application": result, "sample_count": len(commands),
+                                     "provider_statuses": [(stamp, value) for stamp, value in statuses.statuses
+                                                           if stamp >= start],
                                      "first_commands": commands[:6], "last_commands": commands[-6:]})
 
         result, commands = interrupt_during_motion(recorders["nao"], evidence, "hri_app", signal.SIGINT)
@@ -156,6 +161,9 @@ def main():
 
         extra_publisher = node.create_publisher(Twist, "/hri/cmd_vel", 1)
         try:
+            if not wait_until(lambda: node.count_publishers("/hri/cmd_vel") == 1):
+                raise RuntimeError("Duplicate-input fixture did not become visible in the graph.")
+            time.sleep(0.6)
             start = time.monotonic()
             code, output = launch(["robot:=nao", "vx:=0.04", "duration:=1.2", "confirm:=MOVER"])
             result = parse_result(output)
@@ -163,12 +171,36 @@ def main():
             commands = recorders["nao"].since(start)
             report["checks"].append({"name": "multiple_publishers_rejected",
                                      "passed": result.get("outcome") == "application_failed"
-                                     and result.get("message") == "multiple_velocity_publishers"
+                                     and result.get("message") in {
+                                         "multiple_velocity_publishers", "provider_not_ready",
+                                         "provider_status_lost_or_faulted"}
                                      and result.get("released") is True
                                      and all(zero(values) for _, values in commands),
                                      "application": result})
         finally:
             node.destroy_publisher(extra_publisher)
+
+        if not wait_until(lambda: node.count_publishers("/hri/cmd_vel") == 0):
+            raise RuntimeError("Duplicate-input fixture did not leave the graph.")
+        extra_backend = node.create_publisher(Twist, "/nao/cmd_vel", 1)
+        try:
+            if not wait_until(lambda: node.count_publishers("/nao/cmd_vel") == 1):
+                raise RuntimeError("Duplicate-output fixture did not become visible in the graph.")
+            time.sleep(0.6)
+            start = time.monotonic()
+            code, output = launch(["robot:=nao", "vx:=0.04", "duration:=1.2", "confirm:=MOVER"])
+            result = parse_result(output)
+            (evidence / "multiple_backend_publishers.log").write_text(output, encoding="utf-8")
+            commands = recorders["nao"].since(start)
+            report["checks"].append({"name": "multiple_backend_publishers_rejected",
+                                     "passed": result.get("outcome") == "application_failed"
+                                     and result.get("released") is True
+                                     and bool(commands) and all(zero(values) for _, values in commands),
+                                     "application": result, "sample_count": len(commands)})
+        finally:
+            node.destroy_publisher(extra_backend)
+        if not wait_until(lambda: node.count_publishers("/nao/cmd_vel") == 0):
+            raise RuntimeError("Duplicate-output fixture did not leave the graph.")
 
         node.destroy_subscription(subscriptions.pop("nao"))
         time.sleep(0.5)

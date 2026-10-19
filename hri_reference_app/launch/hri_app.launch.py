@@ -73,6 +73,14 @@ def application_arguments(context, mode, robot):
             raise RuntimeError("Follow preview arguments must be finite")
         if not 0.5 <= confidence <= 1 or not 0.3 <= ratio <= 0.8 or not 1 <= timeout <= 60:
             raise RuntimeError("Use confidence [0.5,1], target_height_ratio [0.3,0.8], timeout [1,60]")
+        enabled = argument(context, "enable_motion").strip().lower()
+        if enabled not in {"true", "false"}:
+            raise RuntimeError("enable_motion must be true or false")
+        if enabled == "true":
+            duration = float(argument(context, "duration"))
+            if argument(context, "confirm") != "MOVER" or not math.isfinite(duration) or not 0.1 <= duration <= 5.0:
+                raise RuntimeError("Follow motion requires confirm:=MOVER and duration in [0.1,5]")
+            args += ["--enable-motion", "--confirm", "MOVER", "--duration", str(duration)]
         return args + ["--image-width", str(width), "--image-height", str(height),
                        "--expected-frame", argument(context, "expected_frame"),
                        "--minimum-confidence", str(confidence), "--target-height-ratio", str(ratio),
@@ -185,6 +193,7 @@ def generate_launch_description():
         DeclareLaunchArgument("image_height", default_value="0", description="Actual camera height, required for follow preview"),
         DeclareLaunchArgument("expected_frame", default_value="", description="Exact camera image header.frame_id"),
         DeclareLaunchArgument("target_height_ratio", default_value="0.6", description="Visual box-height fraction, NOT meters"),
+        DeclareLaunchArgument("enable_motion", default_value="false", description="Explicit opt-in for short supervised follow trial"),
         DeclareLaunchArgument("detections_topic", default_value="/yolo/detections"),
         DeclareLaunchArgument("x", default_value="0.0"),
         DeclareLaunchArgument("y", default_value="0.0"),

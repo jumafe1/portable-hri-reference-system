@@ -1,8 +1,4 @@
-"""ROS adapter for a NON-ACTUATING visual-follow preview.
-
-Only DetectPeople is acquired. No Twist publisher, motion service or
-MoveVelocity acquisition belongs in this first validation stage.
-"""
+"""ROS visual-follow session. Motion endpoints exist only after explicit opt-in."""
 
 import json
 import threading
@@ -20,6 +16,7 @@ from std_msgs.msg import String
 from yasmin_ros.basic_outcomes import ABORT, SUCCEED
 
 from follow_controller import Config, Controller, Person
+from follow_motion import FollowMotion
 
 
 CAPABILITY = "hri_capability_interfaces/DetectPeople"
@@ -46,6 +43,7 @@ class FollowSession:
         self.last_print = 0.0
         self.last_reason = ""
         self.bond = None
+        self.motion = None
         # Diagnostics must not stall observation waiting for reliable readers.
         latest = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
         # One explicit node/executor serves perception, services and heartbeat.
@@ -66,6 +64,8 @@ class FollowSession:
             self.release_client = self.node.create_client(
                 FreeCapability, "/capabilities/free_capability"
             )
+            if getattr(args, "enable_motion", False):
+                self.motion = FollowMotion(self)
             self.executor.add_node(self.node)
             self.spin_thread = threading.Thread(
                 target=self.executor.spin, name="follow-ros", daemon=True,
@@ -169,7 +169,7 @@ class FollowSession:
         now = time.monotonic()
         payload = {
             "mode": "follow_person", "robot": self.args.robot,
-            "dry_run": True, "motion_enabled": False,
+            "dry_run": self.motion is None, "motion_enabled": self.motion is not None,
             "vx_m_s": decision.vx, "vy_m_s": 0.0, "wz_rad_s": decision.wz,
             "reason": decision.reason, "locked": decision.locked,
             "source_frame": self.args.expected_frame,
@@ -197,10 +197,15 @@ class FollowSession:
         return self.controller.tick(time.monotonic())
 
     def observe(self, blackboard):
-        deadline = time.monotonic() + self.args.timeout
+        duration = min(self.args.timeout, self.args.duration) if self.motion else self.args.timeout
+        deadline = time.monotonic() + duration
         while rclpy.ok() and not self.cancelled.is_set() and time.monotonic() < deadline:
             with self.lock:
                 decision = self._checked_decision()
+                if self.motion:
+                    error = self.motion.send(decision)
+                    if error:
+                        decision = self.controller.stop(error)
                 self.publish_preview(decision)
                 if self.controller.halted:
                     self.finished = True
@@ -218,7 +223,7 @@ class FollowSession:
             elif not self.tracked_frames:
                 blackboard["message"] = "no_target_acquired"
             else:
-                blackboard["message"] = "preview_completed"
+                blackboard["message"] = "follow_trial_completed" if self.motion else "preview_completed"
                 result = SUCCEED
             self.finished = True
             self.publish_preview(self.controller.stop(blackboard["message"]))

@@ -38,6 +38,7 @@ class FollowSessionTest(unittest.TestCase):
         self.session.latest_stamp = 0
         self.session.latest_received = 0.0
         self.session.finished = False
+        self.session.motion = None
         self.session.publish_preview = MagicMock()
 
     def frame(self):
@@ -80,6 +81,21 @@ class FollowSessionTest(unittest.TestCase):
         self.assertIs(session.executor, executor_type.return_value)
         self.assertIs(session.spin_thread, thread_type.return_value)
         self.assertEqual(node.create_client.call_count, 2)
+        self.assertIsNone(session.motion)
+        node.create_publisher.assert_called_once()
+        self.assertEqual(node.create_publisher.call_args.args[1], "/hri/follow_person/preview")
+
+    def test_motion_transport_is_created_only_after_explicit_opt_in(self):
+        args = SimpleNamespace(image_width=640, image_height=480,
+                               minimum_confidence=0.65, target_height_ratio=0.6,
+                               enable_motion=True)
+        with patch("follow_session.Node"), \
+                patch("follow_session.SingleThreadedExecutor"), \
+                patch("follow_session.threading.Thread"), \
+                patch("follow_session.FollowMotion") as motion_type:
+            session = FollowSession(args, threading.Event())
+        motion_type.assert_called_once_with(session)
+        self.assertIs(session.motion, motion_type.return_value)
 
     def test_constructor_cleans_owned_node_if_subscription_creation_fails(self):
         args = SimpleNamespace(image_width=640, image_height=480,

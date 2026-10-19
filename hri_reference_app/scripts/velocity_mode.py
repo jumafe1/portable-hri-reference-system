@@ -13,13 +13,14 @@ from bondpy import bondpy
 from capabilities2_msgs.srv import EstablishBond, FreeCapability, GetRunningCapabilities, UseCapability
 from geometry_msgs.msg import Twist
 from rclpy.duration import Duration
+from rclpy.executors import SingleThreadedExecutor
+from rclpy.node import Node
 from rclpy.signals import SignalHandlerOptions
 from rclpy.utilities import remove_ros_args
 from std_msgs.msg import String
 from yasmin import Blackboard, CbState, StateMachine
 from yasmin_ros import ServiceState, set_ros_loggers
 from yasmin_ros.basic_outcomes import ABORT, CANCEL, SUCCEED, TIMEOUT
-from yasmin_ros.yasmin_node import YasminNode
 
 from capability_lifecycle import EstablishBondState, FreeCapabilityState, UseCapabilityState
 
@@ -62,16 +63,36 @@ class VelocitySession:
     def __init__(self, args, cancelled):
         self.args = args
         self.cancelled = cancelled
-        self.node = YasminNode.get_instance()
-        self.publisher = self.node.create_publisher(Twist, "/hri/cmd_vel", 1)
         self.status = ("", 0.0)
-        self.subscription = self.node.create_subscription(
-            String, "/hri/move_velocity/status", self.on_status, 1
-        )
-        self.release_client = self.node.create_client(FreeCapability, "/capabilities/free_capability")
-        self.running_client = self.node.create_client(GetRunningCapabilities, "/capabilities/get_running_capabilities")
         self.acquired = False
         self.bond = None
+        self.node = Node("portable_hri_velocity_app")
+        self.executor = SingleThreadedExecutor()
+        self.spin_thread = None
+        try:
+            self.publisher = self.node.create_publisher(Twist, "/hri/cmd_vel", 1)
+            self.subscription = self.node.create_subscription(
+                String, "/hri/move_velocity/status", self.on_status, 1
+            )
+            self.release_client = self.node.create_client(FreeCapability, "/capabilities/free_capability")
+            self.running_client = self.node.create_client(GetRunningCapabilities, "/capabilities/get_running_capabilities")
+            self.executor.add_node(self.node)
+            self.spin_thread = threading.Thread(target=self.executor.spin, daemon=True)
+            self.spin_thread.start()
+        except Exception:
+            self.executor.shutdown()
+            self.node.destroy_node()
+            raise
+
+    def close(self):
+        """Stop callbacks before destroying their node; bond must already be closed."""
+        if not self.executor.shutdown(timeout_sec=2.0):
+            raise RuntimeError("velocity_executor_shutdown_timeout")
+        if self.spin_thread is not None:
+            self.spin_thread.join(timeout=2.0)
+            if self.spin_thread.is_alive():
+                raise RuntimeError("velocity_executor_thread_still_running")
+        self.node.destroy_node()
 
     def start_bond(self, blackboard):
         if self.cancelled.is_set():
@@ -108,6 +129,9 @@ class VelocitySession:
             return ABORT
         deadline = time.monotonic() + 5.0
         while rclpy.ok() and not self.cancelled.is_set() and time.monotonic() < deadline:
+            if self.status_is({"multiple_velocity_publishers", "velocity_source_changed"}):
+                blackboard["message"] = self.status[0]
+                return ABORT
             if self.node.count_publishers("/hri/cmd_vel") != 1:
                 blackboard["message"] = "multiple_velocity_publishers"
                 return ABORT
@@ -195,10 +219,12 @@ def build_state_machine(session):
         EstablishBond, "/capabilities/establish_bond", lambda _: EstablishBond.Request(),
         response_handler=EstablishBondState.handle_response,
         wait_timeout=5.0, response_timeout=5.0, maximum_retry=0,
+        node=session.node,
     )
     acquire = ServiceState(
         UseCapability, "/capabilities/use_capability", UseCapabilityState.create_request,
         wait_timeout=5.0, response_timeout=5.0, maximum_retry=0,
+        node=session.node,
     )
     machine.add_state("ESTABLISH_BOND", bond, transitions={
         SUCCEED: "START_BOND", ABORT: APP_FAILED, CANCEL: APP_FAILED, TIMEOUT: APP_FAILED,
@@ -221,6 +247,7 @@ def build_state_machine(session):
             FreeCapability, "/capabilities/free_capability", FreeCapabilityState.create_request,
             response_handler=FreeCapabilityState.handle_response,
             wait_timeout=1.0, response_timeout=2.0, maximum_retry=0,
+            node=session.node,
         )
         machine.add_state(name, release, transitions={
             SUCCEED: success, ABORT: APP_FAILED, CANCEL: APP_FAILED, TIMEOUT: APP_FAILED,
@@ -230,7 +257,6 @@ def build_state_machine(session):
 
 def run(args):
     rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
-    set_ros_loggers()
     cancelled = threading.Event()
     previous_handlers = {
         sig: signal.signal(sig, lambda _sig, _frame: cancelled.set())
@@ -244,9 +270,12 @@ def run(args):
     }.items():
         blackboard[key] = value
     session = None
+    executor_closed = True
     outcome = APP_FAILED
     try:
         session = VelocitySession(args, cancelled)
+        executor_closed = False
+        set_ros_loggers(session.node)
         outcome = build_state_machine(session)(blackboard)
     except Exception as error:
         blackboard["message"] = f"application_exception: {error}"
@@ -260,10 +289,20 @@ def run(args):
                 outcome = APP_FAILED
                 blackboard["message"] += f"; cleanup_exception: {error}"
             finally:
-                if session.bond is not None:
-                    session.bond.shutdown()
-        YasminNode.destroy_instance()
-        if rclpy.ok():
+                try:
+                    if session.bond is not None:
+                        session.bond.shutdown()
+                except Exception as error:
+                    outcome = APP_FAILED
+                    blackboard["message"] += f"; bond_cleanup_exception: {error}"
+                finally:
+                    try:
+                        session.close()
+                        executor_closed = True
+                    except Exception as error:
+                        outcome = APP_FAILED
+                        blackboard["message"] += f"; executor_cleanup_exception: {error}"
+        if executor_closed and rclpy.ok():
             rclpy.shutdown()
         for sig, handler in previous_handlers.items():
             signal.signal(sig, handler)

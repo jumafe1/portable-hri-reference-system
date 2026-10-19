@@ -24,7 +24,7 @@ from capabilities2_msgs import srv as capabilities_srv
 from capabilities2_msgs.msg import CapabilitySpec
 from geometry_msgs.msg import Twist
 from rclpy.duration import Duration
-from rclpy.executors import MultiThreadedExecutor
+from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from std_msgs.msg import String
 
@@ -121,7 +121,7 @@ def main():
                          "Exclusivity applies only to cooperating providers on this host."]}
     rclpy.init()
     node = Node("software_move_velocity_probe")
-    executor = MultiThreadedExecutor(num_threads=4)
+    executor = SingleThreadedExecutor()
     executor.add_node(node)
     spin_thread = threading.Thread(target=executor.spin, daemon=True)
     spin_thread.start()
@@ -203,6 +203,12 @@ def main():
         probe.check("registration_and_acquisition", probe.wait_for_running({CAPABILITY: PROVIDER}))
         if not wait_until(lambda: publisher.get_subscription_count() > 0):
             raise RuntimeError("Provider did not subscribe to the common velocity topic.")
+        # The provider first settles publisher discovery. Test missing backend
+        # rejection only once that independent precondition has completed.
+        time.sleep(0.6)
+        baseline = time.monotonic()
+        if not wait_until(lambda: recorder.saw_status("backend_unavailable", baseline)):
+            raise RuntimeError("Provider did not report the absent backend after graph settling.")
         start = publish_for(publisher, twist(0.04))
         probe.check("backend_absent_rejects_command",
                     recorder.saw_status("backend_unavailable", start))

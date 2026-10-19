@@ -37,6 +37,7 @@ install(
     scripts/follow_mode.py
     scripts/follow_session.py
     scripts/follow_controller.py
+    scripts/follow_motion.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

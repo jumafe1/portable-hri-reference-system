@@ -1,0 +1,967 @@
+{
+  "started_utc": "2026-10-19T23:16:11.932785+00:00",
+  "checks": [
+    {
+      "name": "requires_confirmation",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-23-16-13-070985-docker-desktop-10872\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Movement requires confirm:=MOVER\n"
+    },
+    {
+      "name": "rejects_long_duration",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-23-16-13-203827-docker-desktop-10875\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Duration must be in [0.1, 5.0] seconds\n"
+    },
+    {
+      "name": "rejects_zero_duration",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-23-16-13-332788-docker-desktop-10878\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Duration must be in [0.1, 5.0] seconds\n"
+    },
+    {
+      "name": "rejects_x_limit",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-23-16-13-461713-docker-desktop-10881\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Velocity exceeds vx=0.10 m/s, vy=0.05 m/s or wz=0.20 rad/s\n"
+    },
+    {
+      "name": "rejects_nan",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-23-16-13-588907-docker-desktop-10884\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Velocities and duration must be finite\n"
+    },
+    {
+      "name": "rejects_zero_velocity",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-19-23-16-13-714998-docker-desktop-10887\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): At least one velocity component must be non-zero\n"
+    },
+    {
+      "name": "nao_routing_stream_stop_release",
+      "passed": true,
+      "application": {
+        "outcome": "application_succeeded",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/MoveVelocity",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveVelocity",
+        "request": {
+          "vx_m_s": 0.04,
+          "vy_m_s": -0.02,
+          "wz_rad_s": 0.08,
+          "duration_s": 1.2
+        },
+        "commands_sent": 24,
+        "message": "velocity_stream_completed",
+        "released": true,
+        "stop_acknowledged": true,
+        "physical_success_verified": false
+      },
+      "sample_count": 58,
+      "provider_statuses": [
+        [
+          97575.27660885,
+          "backend_unavailable"
+        ],
+        [
+          97575.330949891,
+          "graph_settling"
+        ],
+        [
+          97575.379502891,
+          "graph_settling"
+        ],
+        [
+          97575.429803433,
+          "graph_settling"
+        ],
+        [
+          97575.479807391,
+          "graph_settling"
+        ],
+        [
+          97575.530659433,
+          "graph_settling"
+        ],
+        [
+          97575.580248558,
+          "graph_settling"
+        ],
+        [
+          97575.628905391,
+          "graph_settling"
+        ],
+        [
+          97575.679252225,
+          "graph_settling"
+        ],
+        [
+          97575.728720683,
+          "graph_settling"
+        ],
+        [
+          97575.778792558,
+          "graph_settling"
+        ],
+        [
+          97575.829815141,
+          "graph_settling"
+        ],
+        [
+          97575.878709433,
+          "ready"
+        ],
+        [
+          97575.878825725,
+          "ready"
+        ],
+        [
+          97575.928739558,
+          "ready"
+        ],
+        [
+          97575.929306892,
+          "stopped"
+        ],
+        [
+          97575.980917183,
+          "moving"
+        ],
+        [
+          97576.0294416,
+          "moving"
+        ],
+        [
+          97576.078984267,
+          "moving"
+        ],
+        [
+          97576.12981485,
+          "moving"
+        ],
+        [
+          97576.181199433,
+          "moving"
+        ],
+        [
+          97576.230732933,
+          "moving"
+        ],
+        [
+          97576.281675392,
+          "moving"
+        ],
+        [
+          97576.334438267,
+          "moving"
+        ],
+        [
+          97576.382393517,
+          "moving"
+        ],
+        [
+          97576.433709225,
+          "moving"
+        ],
+        [
+          97576.4807656,
+          "moving"
+        ],
+        [
+          97576.5341876,
+          "moving"
+        ],
+        [
+          97576.5817356,
+          "moving"
+        ],
+        [
+          97576.6326311,
+          "moving"
+        ],
+        [
+          97576.68034035,
+          "moving"
+        ],
+        [
+          97576.734887225,
+          "moving"
+        ],
+        [
+          97576.781057142,
+          "moving"
+        ],
+        [
+          97576.834848017,
+          "moving"
+        ],
+        [
+          97576.879702975,
+          "moving"
+        ],
+        [
+          97576.930289267,
+          "moving"
+        ],
+        [
+          97576.981151059,
+          "moving"
+        ],
+        [
+          97577.030924142,
+          "moving"
+        ],
+        [
+          97577.079961725,
+          "moving"
+        ],
+        [
+          97577.130709975,
+          "moving"
+        ],
+        [
+          97577.176966475,
+          "stopped"
+        ],
+        [
+          97577.179299434,
+          "stopped"
+        ],
+        [
+          97577.2308316,
+          "stopped"
+        ],
+        [
+          97577.231538017,
+          "stopped"
+        ],
+        [
+          97577.281793601,
+          "stopped"
+        ],
+        [
+          97577.282400267,
+          "stopped"
+        ],
+        [
+          97577.332296851,
+          "stopped"
+        ],
+        [
+          97577.333990851,
+          "stopped"
+        ],
+        [
+          97577.381718434,
+          "stopped"
+        ],
+        [
+          97577.385593392,
+          "stopped"
+        ],
+        [
+          97577.430150101,
+          "stopped"
+        ],
+        [
+          97577.436652559,
+          "stopped"
+        ],
+        [
+          97577.480792017,
+          "stopped"
+        ],
+        [
+          97577.487583684,
+          "stopped"
+        ],
+        [
+          97577.532594517,
+          "stopped"
+        ],
+        [
+          97577.539394934,
+          "stopped"
+        ],
+        [
+          97577.581072351,
+          "stopped"
+        ],
+        [
+          97577.594398726,
+          "stopped"
+        ]
+      ],
+      "first_commands": [
+        [
+          97575.276839808,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97575.331108016,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97575.379636558,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97575.429946308,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97575.479876433,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97575.530806016,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      ],
+      "last_commands": [
+        [
+          97577.481058684,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97577.487663684,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97577.532819684,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97577.539530392,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97577.581261351,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97577.594487809,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "pepper_routing_stream_stop_release",
+      "passed": true,
+      "application": {
+        "outcome": "application_succeeded",
+        "robot": "pepper",
+        "capability": "hri_capability_interfaces/MoveVelocity",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveVelocity",
+        "request": {
+          "vx_m_s": 0.04,
+          "vy_m_s": -0.02,
+          "wz_rad_s": 0.08,
+          "duration_s": 1.2
+        },
+        "commands_sent": 24,
+        "message": "velocity_stream_completed",
+        "released": true,
+        "stop_acknowledged": true,
+        "physical_success_verified": false
+      },
+      "sample_count": 58,
+      "provider_statuses": [
+        [
+          97579.502946018,
+          "backend_unavailable"
+        ],
+        [
+          97579.556466977,
+          "graph_settling"
+        ],
+        [
+          97579.606465102,
+          "graph_settling"
+        ],
+        [
+          97579.659702935,
+          "graph_settling"
+        ],
+        [
+          97579.706176643,
+          "graph_settling"
+        ],
+        [
+          97579.756720768,
+          "graph_settling"
+        ],
+        [
+          97579.80988756,
+          "graph_settling"
+        ],
+        [
+          97579.857835977,
+          "graph_settling"
+        ],
+        [
+          97579.905785227,
+          "graph_settling"
+        ],
+        [
+          97579.95932031,
+          "graph_settling"
+        ],
+        [
+          97580.005781018,
+          "graph_settling"
+        ],
+        [
+          97580.056408727,
+          "graph_settling"
+        ],
+        [
+          97580.106243394,
+          "ready"
+        ],
+        [
+          97580.106902102,
+          "ready"
+        ],
+        [
+          97580.15435906,
+          "stopped"
+        ],
+        [
+          97580.155183977,
+          "stopped"
+        ],
+        [
+          97580.206697852,
+          "moving"
+        ],
+        [
+          97580.256684269,
+          "moving"
+        ],
+        [
+          97580.309599644,
+          "moving"
+        ],
+        [
+          97580.357139977,
+          "moving"
+        ],
+        [
+          97580.407899519,
+          "moving"
+        ],
+        [
+          97580.456948519,
+          "moving"
+        ],
+        [
+          97580.505708435,
+          "moving"
+        ],
+        [
+          97580.560469352,
+          "moving"
+        ],
+        [
+          97580.606204477,
+          "moving"
+        ],
+        [
+          97580.659640435,
+          "moving"
+        ],
+        [
+          97580.709681727,
+          "moving"
+        ],
+        [
+          97580.757330977,
+          "moving"
+        ],
+        [
+          97580.806447061,
+          "moving"
+        ],
+        [
+          97580.856262811,
+          "moving"
+        ],
+        [
+          97580.906858269,
+          "moving"
+        ],
+        [
+          97580.955983477,
+          "moving"
+        ],
+        [
+          97581.005720061,
+          "moving"
+        ],
+        [
+          97581.055788269,
+          "moving"
+        ],
+        [
+          97581.105651352,
+          "moving"
+        ],
+        [
+          97581.155626811,
+          "moving"
+        ],
+        [
+          97581.206175311,
+          "moving"
+        ],
+        [
+          97581.256107602,
+          "moving"
+        ],
+        [
+          97581.305544144,
+          "moving"
+        ],
+        [
+          97581.354955644,
+          "moving"
+        ],
+        [
+          97581.405925811,
+          "moving"
+        ],
+        [
+          97581.406428561,
+          "stopped"
+        ],
+        [
+          97581.456627852,
+          "stopped"
+        ],
+        [
+          97581.458641519,
+          "stopped"
+        ],
+        [
+          97581.504888644,
+          "stopped"
+        ],
+        [
+          97581.508651894,
+          "stopped"
+        ],
+        [
+          97581.555845603,
+          "stopped"
+        ],
+        [
+          97581.559209644,
+          "stopped"
+        ],
+        [
+          97581.605366686,
+          "stopped"
+        ],
+        [
+          97581.610494978,
+          "stopped"
+        ],
+        [
+          97581.656612811,
+          "stopped"
+        ],
+        [
+          97581.661880061,
+          "stopped"
+        ],
+        [
+          97581.706632936,
+          "stopped"
+        ],
+        [
+          97581.713188894,
+          "stopped"
+        ],
+        [
+          97581.755559436,
+          "stopped"
+        ],
+        [
+          97581.763203353,
+          "stopped"
+        ],
+        [
+          97581.804498311,
+          "stopped"
+        ],
+        [
+          97581.815134894,
+          "stopped"
+        ]
+      ],
+      "first_commands": [
+        [
+          97579.503040977,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97579.556604852,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97579.606662935,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97579.659853268,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97579.70635281,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97579.756916435,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      ],
+      "last_commands": [
+        [
+          97581.706830478,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97581.713311894,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97581.755614061,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97581.763250269,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97581.804546728,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97581.815238061,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "application_sigint_stops_and_releases",
+      "passed": true,
+      "application": {
+        "outcome": "application_failed",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/MoveVelocity",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveVelocity",
+        "request": {
+          "vx_m_s": 0.04,
+          "vy_m_s": 0.0,
+          "wz_rad_s": 0.0,
+          "duration_s": 5.0
+        },
+        "commands_sent": 2,
+        "message": "cancelled",
+        "released": true,
+        "stop_acknowledged": true,
+        "physical_success_verified": false
+      },
+      "last_commands": [
+        [
+          97584.743358271,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97584.767524396,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97584.797347146,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97584.813335396,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        [
+          97584.855939771,
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "multiple_publishers_rejected",
+      "passed": true,
+      "application": {
+        "outcome": "application_failed",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/MoveVelocity",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveVelocity",
+        "request": {
+          "vx_m_s": 0.04,
+          "vy_m_s": 0.0,
+          "wz_rad_s": 0.0,
+          "duration_s": 1.2
+        },
+        "commands_sent": 0,
+        "message": "multiple_velocity_publishers",
+        "released": true,
+        "stop_acknowledged": false,
+        "physical_success_verified": false
+      }
+    },
+    {
+      "name": "multiple_backend_publishers_rejected",
+      "passed": true,
+      "application": {
+        "outcome": "application_failed",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/MoveVelocity",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveVelocity",
+        "request": {
+          "vx_m_s": 0.04,
+          "vy_m_s": 0.0,
+          "wz_rad_s": 0.0,
+          "duration_s": 1.2
+        },
+        "commands_sent": 0,
+        "message": "multiple_velocity_publishers",
+        "released": true,
+        "stop_acknowledged": false,
+        "physical_success_verified": false
+      },
+      "sample_count": 3
+    },
+    {
+      "name": "backend_absent_fails_closed",
+      "passed": true,
+      "application": {
+        "outcome": "application_failed",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/MoveVelocity",
+        "requested_provider": "hri_naoqi_providers/NaoqiMoveVelocity",
+        "request": {
+          "vx_m_s": 0.04,
+          "vy_m_s": 0.0,
+          "wz_rad_s": 0.0,
+          "duration_s": 1.2
+        },
+        "commands_sent": 0,
+        "message": "provider_not_ready",
+        "released": true,
+        "stop_acknowledged": false,
+        "physical_success_verified": false
+      },
+      "launch_exit_code": 0
+    }
+  ],
+  "evidence_directory": "/tmp/portable-hri-app-velocity-probe-wsvvmcdu",
+  "limits": [
+    "Fake cmd_vel subscribers; no physical movement or stop is verified."
+  ],
+  "passed": true
+}

@@ -1,8 +1,8 @@
-# Seguimiento visual: primera etapa sin movimiento
+# Seguimiento visual: preview y ensayo corto supervisado
 
-`hri_app` incorpora el modo YASMIN `follow_person` como **previsualización**, no como seguimiento físico habilitado. Adquiere `DetectPeople` mediante Capabilities2 y el proveedor existente `YoloDetectPeople`, procesa `/hri/people` y publica sugerencias numéricas en `/hri/follow_person/preview` (`std_msgs/msg/String`, contenido JSON).
+`hri_app` incorpora el modo YASMIN `follow_person` como **previsualización por defecto**. Adquiere `DetectPeople` mediante Capabilities2 y `YoloDetectPeople`, procesa `/hri/people` y publica diagnóstico en `/hri/follow_person/preview` (`std_msgs/msg/String`, JSON). Con activación explícita puede adquirir además `MoveVelocity` y enviar las decisiones a `NaoqiMoveVelocity`. No se añade otro proveedor.
 
-No se crea un proveedor nuevo. **No se adquiere `MoveVelocity`, no se publican mensajes `Twist` y no se llaman servicios de movimiento.** Tampoco se modifica la vida autónoma. No existe un argumento que active movimiento en este modo: `motion_enabled: false` es una declaración del resultado, no un interruptor configurable.
+**Sin `enable_motion:=true`, no se adquiere MoveVelocity ni se crea un publicador Twist.** La activación requiere además `confirm:=MOVER`; el intervalo de generación de comandos se acota a `duration` (0.1–5 s, predeterminado 2 s) y a `timeout`, el menor de ambos. No se modifica la vida autónoma. El ensayo físico de seguimiento aún debe validarse con el robot; las pruebas software no lo sustituyen.
 
 ## Arquitectura de esta etapa
 
@@ -10,14 +10,15 @@ No se crea un proveedor nuevo. **No se adquiere `MoveVelocity`, no se publican m
 flowchart LR
     C["Cámara NAO: imagen ROS 2"] --> Y["YOLO externo"]
     Y --> D["Proveedor YoloDetectPeople"]
-    A["hri_app: YASMIN follow_person"] -->|"adquiere y libera DetectPeople"| K[Capabilities2]
+    A["hri_app: YASMIN follow_person"] -->|"adquiere y libera capacidades"| K[Capabilities2]
     K -->|"gestiona"| D
     D -->|"/hri/people"| A
     A --> P["Controlador visual: propuesta de velocidad"]
     P --> J["/hri/follow_person/preview: JSON, sin actuación"]
     Y --> R["/yolo/dbg_image → rqt"]
-    P -. "Futuro: requiere validación y habilitación explícita" .-> M["MoveVelocity vía Capabilities2"]
-    M -.-> B["Driver → robot"]
+    P -->|"Solo enable_motion=true y confirm=MOVER"| M["MoveVelocity vía Capabilities2"]
+    K -->|"gestiona si se activa movimiento"| M
+    M --> B["NaoqiMoveVelocity → cmd_vel → driver → robot"]
 ```
 
 YASMIN organiza vínculo con el servidor, adquisición, verificación del proveedor, observación y liberación. El controlador calcula sugerencias durante el estado de observación; no necesita una transición YASMIN por imagen. La cámara y YOLO se ejecutan aparte. La visualización rqt no atraviesa el contrato común y no autoriza movimiento.
@@ -33,7 +34,7 @@ YASMIN recibe este nodo mediante `ServiceState(node=...)` y
 - `target_height_ratio:=0.60` significa que la altura objetivo del rectángulo ocupa el 60 % de la imagen. **No significa 60 cm ni mide distancia.** El resultado conserva `distance_m: null`.
 - **Hipótesis del ensayo: una única persona en un ambiente controlado.** Se requieren tres observaciones consecutivas con una sola persona elegible. El umbral predeterminado es `minimum_confidence:=0.65`; varias detecciones que superan ese umbral son ambiguas.
 - Se usa la única detección elegible sin comparar identidades, tamaños ni posiciones con la imagen anterior. No requiere tracking y no garantiza que sea la misma persona si alguien la sustituye sin un intervalo detectable. No usar esta simplificación como seguimiento entre multitudes.
-- Las sugerencias están limitadas a avance de 0.03 m/s y giro de 0.10 rad/s en magnitud; no hay marcha atrás ni desplazamiento lateral. Son números diagnósticos, no velocidades ejecutadas.
+- Las propuestas están limitadas a avance de 0.03 m/s y giro de 0.10 rad/s en magnitud; no hay marcha atrás ni desplazamiento lateral. Solo con activación explícita se envían como órdenes; no son velocidades medidas.
 - Cambiar de posición, tamaño de caja o identificador no genera `target_discontinuity`. Una caja grande (altura mayor al 65 % con los valores predeterminados) bloquea el avance, pero permite proponer giro si está descentrada: `preview_centering_close`. Centrada, da cero con `target_too_close_visual`. No se aumentaron las velocidades.
 - Una caja que toca un borde da cero en ambos ejes (`clipped_detection`), sin terminar por ese solo motivo; si vuelve a estar completa puede reanudar propuestas. No se busca fuera de la imagen. Que una caja no toque el borde no garantiza que la persona esté completa.
 - Tras adquirir el objetivo, pérdida, ambigüedad o datos inválidos/antiguos dejan la propuesta en cero y terminan la prueba con fallo. No hay recuperación automática de esos fallos: revisar la causa y realizar una nueva ejecución.
@@ -64,7 +65,7 @@ Después de tener estos cambios disponibles localmente, compilar el paquete de a
 
 ```bash
 cd ~/Documents/portable_hri_ws
-colcon build --packages-select hri_reference_app --symlink-install
+colcon build --packages-up-to hri_reference_app hri_naoqi_providers --symlink-install
 source install/setup.bash
 ```
 
@@ -160,17 +161,46 @@ Con los entornos ROS cargados, `python3 -m unittest discover -s tests -p 'test_f
 incluye también regresiones de concurrencia y validación de cabeceras del adaptador,
 sin crear un grafo ROS ni conectarse al robot.
 
-## Siguiente etapa y límites
+## Activación del ensayo físico (pendiente de validación con NAO)
 
-La simplificación de una sola persona pasó **57/57 pruebas unitarias/de adaptador/cierre y 20/20 de integración** en Docker Jazzy, sin hardware. El escenario nuevo verifica cambios de posición/tamaño/ID, propuesta de avance centrado y giro a ambos lados con caja grande sin avance. La integración comprobó ausencia de publicadores y mensajes de velocidad en `/hri/cmd_vel`, `/nao/cmd_vel` y `/pepper/cmd_vel`. Evidencia: [resultado de la simplificación](results/follow_person_simplified_20261019.json). Colcon, compilación de sintaxis Python y `git diff --check` aprobaron; no hay type-checker estático ni ESLint configurados para este paquete. La compilación de sintaxis no es comprobación de tipos. La repetición de estos cambios con cámara real sigue pendiente.
+Antes de ejecutar: una sola persona, suelo plano previamente despejado, sin escaleras ni obstáculos, cabeza estable mirando al frente y cámara alineada con la base. Un supervisor debe poder utilizar la parada física independiente. No ejecutar teleoperación, otras aplicaciones de movimiento, otro servidor Capabilities2 ni otra instancia de YOLO sobre el mismo tópico. No interpretar el caminar de la persona como garantía de camino seguro.
+
+Después de disponer de los cambios y recompilar, con driver y YOLO correctos activos, el primer ensayo de **dos segundos** usa las dimensiones y frame ya comprobados en NAO:
+
+```bash
+cd ~/Documents/portable_hri_ws
+ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=320 image_height:=240 expected_frame:=CameraTop_optical_frame enable_motion:=true confirm:=MOVER duration:=2.0 timeout:=20.0
+```
+
+Permanecer visible y centrado antes de iniciar. Empezar quieto; no caminar hasta comprobar el sentido de respuesta. Probar avance y giro en ensayos separados. Una persona demasiado cerca o una caja recortada pueden producir solo ceros; no acercarse al robot para forzar el giro. Ante fallo, revisar y reiniciar manualmente: no se reanuda automáticamente tras perder el objetivo.
+
+YASMIN adquiere DetectPeople y MoveVelocity, verifica proveedores, observa y transmite a unos 20 Hz. Al terminar o fallar, solicita cero durante 0.4 s, comprueba estado `stopped`, libera MoveVelocity y después DetectPeople. `Ctrl+C` se trata como cancelación cuando llega al proceso de aplicación; el cierre completo del launch/red/proveedor puede impedir la limpieza, por lo que **no reemplaza una parada física**.
+
+Resultados: `people_released` y `motion_released` informan liberación; `released` requiere ambas. `stop_acknowledged` solo confirma estado software del proveedor. `application_succeeded` significa ensayo acotado completado, incluso si todas las órdenes fueron cero. `physical_success_verified` sigue en `false`: registrar por separado si NAO efectivamente siguió y se detuvo. El plazo de 2–5 s limita la generación de órdenes, no garantiza detener motores en ese plazo.
+
+El proveedor conserva watchdog de comandos de 0.3 s y comprueba publicadores únicos, estabilidad del grafo durante 0.5 s y continuidad del GID de origen. Conflictos quedan bloqueados hasta liberar y readquirir. El descubrimiento DDS es asíncrono: no equivale a exclusión distribuida instantánea ni autenticación; otro publicador directo al driver aún podría ordenar movimiento. La caída total del proveedor o de la red no queda cubierta por su watchdog local.
+
+Prueba software de este recorrido, **solo sin drivers y en dominio aislado**:
+
+```bash
+ROS_LOCALHOST_ONLY=1 ROS_DOMAIN_ID=182 python3 tests/unified_hri_follow_motion_probe.py --software-only
+```
+
+## Evidencia y límites
+
+La integración con movimiento pasó **87/87 unitarias, 18/18 integración ampliada, 20/20 regresión preview, 12/12 MoveVelocity en dos corridas, 22/22 proveedor directo y 3/3 conflictos de origen**. Colcon, sintaxis Python y CTest 1/1 aprobaron. Todo con interfaces simuladas, sin robots. Informes y fallo previo conservados en [evidencia del incremento](results/follow_person_motion_20261019/README.md).
+
+La regresión adicional de los modos anteriores quedó 7/8 en dos repeticiones: Pepper MoveRelative informó servicio no disponible. Se conserva como hallazgo pendiente, sin modificar ese proveedor ni afirmar que toda la aplicación pasó sus regresiones. No afecta a la evidencia específica de FollowPerson, que utiliza MoveVelocity, no MoveRelative.
+
+La simplificación previa de una sola persona pasó **57/57 pruebas unitarias/de adaptador/cierre y 20/20 de integración** en Docker Jazzy, sin hardware. El escenario nuevo verifica cambios de posición/tamaño/ID, propuesta de avance centrado y giro a ambos lados con caja grande sin avance. La integración comprobó ausencia de publicadores y mensajes de velocidad en `/hri/cmd_vel`, `/nao/cmd_vel` y `/pepper/cmd_vel`. Evidencia: [resultado de la simplificación](results/follow_person_simplified_20261019.json). Colcon, compilación de sintaxis Python y `git diff --check` aprobaron; no hay type-checker estático ni ESLint configurados para este paquete. La compilación de sintaxis no es comprobación de tipos. La repetición con cámara real se describe abajo.
 
 La verificación software de la entrega original pasó 52 pruebas unitarias/de adaptador/cierre
 y 19 de integración del nuevo modo. Las regresiones de los otros modos y un
-fallo intermitente pendiente de exclusión en MoveVelocity se detallan en
-[la evidencia](results/follow_person_preview_20261019/README.md). No interpretar
-la repetición aprobada de ese caso como fallo corregido; revisarlo antes de
-habilitar seguimiento físico. El autor aportó una corrida preview aprobada con cámara NAO (133 frames recibidos) y corridas fallidas posteriores por pérdida, caducidad y discontinuidad. Son evidencia de la versión anterior, no aprobación de la simplificación actual ni seguimiento físico. La nueva lógica debe repetirse en el laboratorio.
+fallo intermitente original de exclusión en MoveVelocity se detallan en
+[la evidencia](results/follow_person_preview_20261019/README.md). En este incremento se incorporan las comprobaciones de fuente descritas arriba y se corrige el ejecutor del modo de velocidad, sin aumentar su watchdog. El autor aportó una corrida preview aprobada con cámara NAO (133 frames recibidos) y corridas fallidas posteriores por pérdida, caducidad y discontinuidad. Son evidencia de la versión anterior, distinta de las repeticiones simplificadas posteriores.
 
-La solicitud de seguimiento físico queda como siguiente etapa explícita, **no habilitada en esta entrega**. Antes de conectar el controlador a `MoveVelocity`, validar la propuesta con imagen real, tratamiento de pérdidas, parada independiente y condiciones del ensayo. El driver actual no tiene un watchdog independiente de comandos: la pérdida del proveedor o de la comunicación no garantiza una parada física. Un cero en preview no detiene ningún robot.
+La conexión a MoveVelocity está implementada con activación explícita; no se afirma seguimiento físico validado. El driver actual no tiene un watchdog independiente de comandos: la pérdida del proveedor o de la comunicación no garantiza una parada física. Un cero en preview no detiene ningún robot.
+
+El autor ya repitió la simplificación con cámara real de NAO: tres previews de 20 s terminaron con `preview_completed` y `released: true`, con 117/115, 126/124 y 130/128 frames recibidos/adquiridos, respectivamente (396 muestras cada uno). La primera mostró propuestas de giro de ambos signos; la última avance entre aproximadamente 0.00518 y 0.02464 m/s, con giro cero. En las tres: `dry_run: true`, `motion_enabled: false`, `physical_success_verified: false`. Es evidencia de percepción y control propuesto, no de seguimiento físico.
 
 La hipótesis «si pasa la persona, puede pasar el robot» no se utiliza como garantía. Una futura prueba debe limitarse a suelo plano, despejado, previamente inspeccionado, sin escaleras, con baja velocidad, supervisión y acceso a parada física. Esta etapa no estima distancia métrica, no detecta desniveles, no implementa navegación ni evita obstáculos. La selección `robot:=pepper` no acredita una prueba física de seguimiento en Pepper.

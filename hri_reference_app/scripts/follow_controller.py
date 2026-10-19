@@ -1,6 +1,6 @@
-"""ROS-independent, preview-only visual following controller.
+"""ROS-independent visual following proposal controller.
 
-Outputs are suggestions, not authorized robot commands. Box size is a visual
+Outputs need the session's explicit motion opt-in before actuation. Box size is a visual
 proxy, NOT metric distance or collision clearance. This controlled experiment
 assumes exactly one participant; the sole eligible detection is the target.
 No identity association is attempted, even when tracking IDs are supplied.
@@ -165,7 +165,7 @@ class Controller:
             return self._zero("clipped_detection")
         error = (person.center_x - self.config.image_width / 2) / (self.config.image_width / 2)
         wz = 0.0 if abs(error) <= 0.08 else max(-0.10, min(0.10, -0.20 * error))
-        # Preview only: apparent size gates advance, not centering. This is
+        # Apparent size gates advance, not centering. This proposal is
         # not clearance to rotate physically; clipped boxes remain zero above.
         if height_ratio > self.config.target_height_ratio + 0.05:
             reason = "preview_centering_close" if wz != 0 else "target_too_close_visual"

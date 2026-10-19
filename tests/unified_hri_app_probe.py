@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
-"""Exercise all six robot/mode combinations without physical robots."""
+"""Exercise all six robot/mode combinations in an isolated software-only domain."""
 
+from datetime import datetime, timezone
 import json
 import math
 import os
+from pathlib import Path
 import signal
 import subprocess
+import tempfile
 import threading
 import time
 
 import rclpy
 from naoqi_utilities_msgs.srv import MoveTo, Say
 from nav_msgs.msg import Odometry
-from rclpy.executors import MultiThreadedExecutor
+from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from yolo_msgs.msg import Detection, DetectionArray
+
+from capabilities_naoqi_move_velocity_probe import software_guard, wait_until
 
 
 EXPECTED_PROVIDERS = {
@@ -80,18 +85,34 @@ def rejected_launch(name, arguments, expected_message):
 
 
 def main():
+    software_guard()
+    evidence = Path(tempfile.mkdtemp(prefix="portable-hri-app-probe-"))
+    report = {"started_utc": datetime.now(timezone.utc).isoformat(),
+              "evidence_directory": str(evidence),
+              "limits": ["Software-only; no physical movement verified.",
+                         "Run sequentially: launchers share a SQLite path across ROS domains."]}
     rclpy.init()
     node = Node("unified_hri_app_probe")
-    executor = MultiThreadedExecutor(num_threads=4)
+    # Fixed synthetic streams and service callbacks do not need parallelism.
+    executor = SingleThreadedExecutor()
     executor.add_node(node)
     spin_thread = threading.Thread(target=executor.spin, daemon=True)
     spin_thread.start()
+    time.sleep(1.0)
+    strangers = set(node.get_node_names()) - {node.get_name()}
+    if strangers:
+        executor.shutdown()
+        spin_thread.join(timeout=2)
+        node.destroy_node()
+        rclpy.shutdown()
+        raise RuntimeError(f"Domain is not isolated; refusing to run: {strangers}")
     lock = threading.Lock()
     events = []
     positions = {"nao": 0.0, "pepper": 0.0}
     services = []
     publishers = {}
     timers = []
+    ticks = {"nao": [], "pepper": [], "detections": []}
 
     for robot in positions:
         publishers[robot] = node.create_publisher(Odometry, f"/{robot}/odom", 10)
@@ -116,6 +137,7 @@ def main():
             message.pose.pose.orientation.w = 1.0
             with lock:
                 message.pose.pose.position.x = positions[platform]
+                ticks[platform].append(time.monotonic())
             publishers[platform].publish(message)
 
         services.append(node.create_service(Say, f"/{robot}/say", say))
@@ -138,21 +160,36 @@ def main():
         person.bbox.size.y = 100.0
         frame.detections = [person]
         detections.publish(frame)
+        with lock:
+            ticks["detections"].append(time.monotonic())
 
     timers.append(node.create_timer(0.1, publish_person))
-    checks = [
-        rejected_launch(
-            "movement_requires_confirmation",
-            ("x:=0.1", "y:=0", "theta:=0"),
-            "Movement requires confirm:=MOVER",
-        ),
-        rejected_launch(
-            "movement_rejects_out_of_bounds",
-            ("x:=0.6", "y:=0", "theta:=0", "confirm:=MOVER"),
-            "Movement exceeds",
-        ),
-    ]
+    checks = []
+    clients = []
     try:
+        # Verify fixture readiness before launching the first application. This
+        # is not a retry of a failed speech/movement request.
+        for robot in positions:
+            for kind, name in ((Say, "say"), (MoveTo, "move_to")):
+                client = node.create_client(kind, f"/{robot}/{name}")
+                clients.append(client)
+                if not client.wait_for_service(timeout_sec=3.0):
+                    raise RuntimeError(f"Fixture service did not become ready: /{robot}/{name}")
+        if not wait_until(lambda: all(len(samples) >= 3 for samples in ticks.values())):
+            raise RuntimeError("Fixture timers did not begin publishing.")
+        report["fixture_ready"] = True
+        checks.extend([
+            rejected_launch(
+                "movement_requires_confirmation",
+                ("x:=0.1", "y:=0", "theta:=0"),
+                "Movement requires confirm:=MOVER",
+            ),
+            rejected_launch(
+                "movement_rejects_out_of_bounds",
+                ("x:=0.6", "y:=0", "theta:=0", "confirm:=MOVER"),
+                "Movement exceeds",
+            ),
+        ])
         for robot in positions:
             for mode in EXPECTED_PROVIDERS:
                 with lock:
@@ -160,6 +197,7 @@ def main():
                     positions[robot] = 0.0
                 time.sleep(0.2)
                 code, result, output = launch_application(robot, mode)
+                (evidence / f"{robot}_{mode}.log").write_text(output, encoding="utf-8")
                 with lock:
                     observed = list(events)
                 expected_events = [] if mode == "detect_people" else [mode]
@@ -188,22 +226,37 @@ def main():
                     "result": result, "backend_events": observed,
                     "output_tail": output[-1000:] if not passed else "",
                 })
+    except Exception as error:
+        report["execution_error"] = str(error)
     finally:
-        for timer in timers:
-            node.destroy_timer(timer)
-        for service in services:
-            node.destroy_service(service)
-        for publisher in publishers.values():
-            node.destroy_publisher(publisher)
-        node.destroy_publisher(detections)
-        executor.shutdown()
+        shutdown_ok = executor.shutdown(timeout_sec=2.0)
         spin_thread.join(timeout=2)
-        node.destroy_node()
-        rclpy.shutdown()
+        if not shutdown_ok or spin_thread.is_alive():
+            report["execution_error"] = report.get("execution_error", "") + "; fixture_executor_shutdown_timeout"
+        else:
+            for timer in timers:
+                node.destroy_timer(timer)
+            for service in services:
+                node.destroy_service(service)
+            for publisher in publishers.values():
+                node.destroy_publisher(publisher)
+            node.destroy_publisher(detections)
+            for client in clients:
+                node.destroy_client(client)
+            node.destroy_node()
+            rclpy.shutdown()
 
-    print(json.dumps({"passed": all(item["passed"] for item in checks),
-                      "checks": checks}, indent=2, ensure_ascii=False))
-    if not checks or not all(item["passed"] for item in checks):
+    report["fixture_timing"] = {
+        name: {"samples": len(samples), "maximum_gap_s": max(
+            (after - before for before, after in zip(samples, samples[1:])), default=0.0)}
+        for name, samples in ticks.items()
+    }
+    report["checks"] = checks
+    report["passed"] = len(checks) == 8 and "execution_error" not in report and all(
+        item["passed"] for item in checks)
+    (evidence / "result.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    if not report["passed"]:
         raise SystemExit(1)
 
 

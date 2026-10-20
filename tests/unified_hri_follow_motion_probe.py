@@ -86,6 +86,10 @@ class MotionFrames:
         person.bbox.center.position.x = 160.0
         person.bbox.center.position.y = 120.0
         person.bbox.size.x, person.bbox.size.y = 60.0, 100.0
+        if self.case in ("speed_cap", "speed_cap_medium", "speed_preview"):
+            # A small centered box exercises saturation, not just a larger
+            # configured ceiling that the proportional controller never reaches.
+            person.bbox.size.y = 48.0
         if self.case == "directions":
             elapsed = time.monotonic() - self.started
             # First acquire and advance, then turn either way without advancing.
@@ -151,9 +155,9 @@ def launch(arguments, path, fixture=None, interrupt=None):
     return process.returncode, path.read_text(encoding="utf-8")
 
 
-def bounded(commands):
+def bounded(commands, max_forward_speed=0.03):
     return all(all(math.isfinite(value) for value in values)
-               and -1e-9 <= values[0] <= 0.030001
+               and -1e-9 <= values[0] <= max_forward_speed + 1e-6
                and all(abs(values[index]) < 1e-9 for index in (1, 2, 3, 4))
                and abs(values[5]) <= 0.100001 for _, values in commands)
 
@@ -182,7 +186,9 @@ def main():
                     ("malformed_opt_in", "enable_motion:=yes"),
                     ("duration_zero", "duration:=0"), ("duration_long", "duration:=301"),
                     ("duration_nan", "duration:=nan"), ("duration_inf", "duration:=inf"),
-                    ("timeout_long", "timeout:=301")]
+                    ("timeout_long", "timeout:=301"),
+                    ("speed_above_limit", "max_forward_speed:=0.1001"),
+                    ("speed_nan", "max_forward_speed:=nan")]
         for name, argument in rejected:
             fixture.begin("nao")
             code, output = launch(["robot:=nao", argument], evidence / f"invalid_{name}.log")
@@ -210,7 +216,29 @@ def main():
             frames = None
         time.sleep(0.5)
 
+        fixture.begin("nao")
+        frames = MotionFrames(fixture, "speed_preview")
+        try:
+            code, output = launch(["robot:=nao", "enable_motion:=false", "timeout:=3.0",
+                                   "max_forward_speed:=0.1"], evidence / "speed_preview.log")
+            result = parse_result(output)
+            previews, invalid, publishers, counts = fixture.snapshot(fixture.case_start)
+            report["checks"].append({"name": "speed_0_1_preview_without_actuation",
+                "passed": code == 0 and result.get("outcome") == "application_succeeded"
+                and result.get("dry_run") is True and result.get("motion_enabled") is False
+                and result.get("released") is True and result.get("commands_sent") == 0
+                and any(sample.get("vx_m_s", 0) > 0.03 for sample in previews)
+                and all(0 <= sample.get("vx_m_s", -1) <= 0.100001 for sample in previews)
+                and not invalid and not publishers and not any(counts.values()),
+                "application": result, "velocity_publishers_seen": publishers,
+                "backend_counts": counts})
+        finally:
+            frames.close()
+            frames = None
+        time.sleep(0.5)
+
         cases = [("nao", "directions"), ("pepper", "directions"),
+                 ("nao", "speed_cap"), ("nao", "speed_cap_medium"),
                  ("nao", "person_loss"), ("nao", "stream_loss"),
                  ("nao", "stale_frame"), ("nao", "ambiguous"),
                  ("nao", "interrupt"), ("nao", "launch_interrupt_long"),
@@ -229,6 +257,10 @@ def main():
             frames = MotionFrames(fixture, case)
             try:
                 arguments = [f"robot:={robot}"]
+                max_forward_speed = (0.1 if case in ("speed_cap", "process_group_interrupt_long")
+                                     else 0.05 if case == "speed_cap_medium" else 0.03)
+                if max_forward_speed != 0.03:
+                    arguments += [f"max_forward_speed:={max_forward_speed}"]
                 interrupt = {"interrupt": "application", "launch_interrupt_long": "launch",
                              "process_group_interrupt_long": "process_group"}.get(case)
                 if case == "launch_interrupt_long":
@@ -247,7 +279,7 @@ def main():
                 commands = fixture.recorders[f"/{robot}/cmd_vel"].since(fixture.case_start)
                 other = "pepper" if robot == "nao" else "nao"
                 other_commands = fixture.recorders[f"/{other}/cmd_vel"].since(fixture.case_start)
-                success = case == "directions"
+                success = case in ("directions", "speed_cap", "speed_cap_medium")
                 passed = (result.get("outcome") == ("application_succeeded" if success else "application_failed")
                           and result.get("robot") == robot and result.get("dry_run") is False
                           and result.get("motion_enabled") is True
@@ -255,18 +287,23 @@ def main():
                           and result.get("released") is True
                           and result.get("motion_released") is True
                           and result.get("people_released") is True
-                          and bounded(commands) and not other_commands)
+                          and bounded(commands, max_forward_speed) and not other_commands)
                 if case not in ("duplicate_commands", "duplicate_status", "missing_backend"):
                     passed = (passed and bool(commands) and zero(commands[-1][1])
                               and any(not zero(values) for _, values in commands)
                               and result.get("stop_acknowledged") is True)
                 else:
                     passed = passed and all(zero(values) for _, values in commands)
-                if success:
+                if case == "directions":
                     passed = (passed and code == 0
                               and any(values[0] > 0 for _, values in commands)
                               and any(values[5] > 0 for _, values in commands)
                               and any(values[5] < 0 for _, values in commands))
+                if case in ("speed_cap", "speed_cap_medium"):
+                    passed = (passed and code == 0
+                              and any(values[0] > 0.03 for _, values in commands)
+                              and any(abs(values[0] - max_forward_speed) < 1e-6
+                                      for _, values in commands))
                 if case == "person_loss":
                     passed = passed and result.get("message") == "person_missing"
                 if case in ("stream_loss", "stale_frame"):
@@ -286,6 +323,7 @@ def main():
                               and first_zero_delay <= 1.0 and remained_zero)
                 report["checks"].append({"name": f"{robot}_{case}", "passed": bool(passed),
                     "launch_arguments": arguments, "interrupt_target": interrupt,
+                    "max_forward_speed_m_s": max_forward_speed,
                     "first_zero_after_interrupt_s": first_zero_delay,
                     "zero_deadline_s": 1.0 if interrupt else None,
                     "remained_zero_after_stop": remained_zero,

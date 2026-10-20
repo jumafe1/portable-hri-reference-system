@@ -2,7 +2,7 @@
 
 `hri_app` incorpora el modo YASMIN `follow_person` como **previsualización por defecto**. Adquiere `DetectPeople` mediante Capabilities2 y `YoloDetectPeople`, procesa `/hri/people` y publica diagnóstico en `/hri/follow_person/preview` (`std_msgs/msg/String`, JSON). Con activación explícita puede adquirir además `MoveVelocity` y enviar las decisiones a `NaoqiMoveVelocity`. No se añade otro proveedor.
 
-**Sin `enable_motion:=true`, no se adquiere MoveVelocity ni se crea un publicador Twist.** La activación requiere además `confirm:=MOVER`; el intervalo de generación de comandos se acota a `duration` (0.1–300 s, predeterminado 2 s) y a `timeout` (1–300 s, predeterminado 120 s), el menor de ambos. No se modifica la vida autónoma. El seguimiento físico aún debe validarse con el robot; las pruebas software no lo sustituyen. El modo independiente `move_velocity` conserva su límite de 5 s.
+**Sin `enable_motion:=true`, no se adquiere MoveVelocity ni se crea un publicador Twist.** La activación requiere además `confirm:=MOVER`; el intervalo de generación de comandos se acota a `duration` (0.1–300 s, predeterminado 2 s) y a `timeout` (1–300 s, predeterminado 120 s), el menor de ambos. No se modifica la vida autónoma. El autor confirmó seguimiento físico en NAO con la configuración anterior de velocidad; una configuración más rápida requiere su propia validación supervisada. Las pruebas software no la sustituyen. El modo independiente `move_velocity` conserva su límite de 5 s.
 
 ## Arquitectura de esta etapa
 
@@ -34,8 +34,9 @@ YASMIN recibe este nodo mediante `ServiceState(node=...)` y
 - `target_height_ratio:=0.60` significa que la altura objetivo del rectángulo ocupa el 60 % de la imagen. **No significa 60 cm ni mide distancia.** El resultado conserva `distance_m: null`.
 - **Hipótesis del ensayo: una única persona en un ambiente controlado.** Se requieren tres observaciones consecutivas con una sola persona elegible. El umbral predeterminado es `minimum_confidence:=0.65`; varias detecciones que superan ese umbral son ambiguas.
 - Se usa la única detección elegible sin comparar identidades, tamaños ni posiciones con la imagen anterior. No requiere tracking y no garantiza que sea la misma persona si alguien la sustituye sin un intervalo detectable. No usar esta simplificación como seguimiento entre multitudes.
-- Las propuestas están limitadas a avance de 0.03 m/s y giro de 0.10 rad/s en magnitud; no hay marcha atrás ni desplazamiento lateral. Solo con activación explícita se envían como órdenes; no son velocidades medidas.
-- Cambiar de posición, tamaño de caja o identificador no genera `target_discontinuity`. Una caja grande (altura mayor al 65 % con los valores predeterminados) bloquea el avance, pero permite proponer giro si está descentrada: `preview_centering_close`. Centrada, da cero con `target_too_close_visual`. No se aumentaron las velocidades.
+- El avance conserva un máximo predeterminado de 0.03 m/s. `max_forward_speed` permite configurar un valor finito mayor que cero y hasta **0.10 m/s (10 cm/s)**. Es un máximo de la orden, no una velocidad constante ni medida; no garantiza que todo robot pueda alcanzarlo. El giro sigue limitado a 0.10 rad/s en magnitud, sin marcha atrás ni desplazamiento lateral. Solo con activación explícita se envían órdenes.
+- La ganancia proporcional de avance escala con `max_forward_speed / 0.03`: para la misma caja válida y centrada, elevar el máximo de 0.03 a 0.10 aumenta la propuesta aproximadamente 3.33 veces, hasta saturar en el máximo elegido. No se cambia el tamaño visual objetivo ni las condiciones que bloquean el avance. El proveedor mantiene sus rampas de aceleración y su límite de 0.10 m/s; el adaptador de FollowPerson también verifica el máximo de la sesión.
+- Cambiar de posición, tamaño de caja o identificador no genera `target_discontinuity`. Una caja grande (altura mayor al 65 % con los valores predeterminados) bloquea el avance, pero permite proponer giro si está descentrada: `preview_centering_close`. Centrada, da cero con `target_too_close_visual`.
 - Una caja que toca un borde da cero en ambos ejes (`clipped_detection`), sin terminar por ese solo motivo; si vuelve a estar completa puede reanudar propuestas. No se busca fuera de la imagen. Que una caja no toque el borde no garantiza que la persona esté completa.
 - Tras adquirir el objetivo, pérdida, ambigüedad o datos inválidos/antiguos dejan la propuesta en cero y terminan la prueba con fallo. No hay recuperación automática de esos fallos: revisar la causa y realizar una nueva ejecución.
 - Se rechazan proveedor o `frame_id` inesperados, timestamps repetidos/no crecientes, imágenes de más de 0.75 s de antigüedad o de más de 0.10 s en el futuro. Los relojes y la latencia importan; no reducir estas validaciones para ocultar un problema de la fuente.
@@ -161,7 +162,7 @@ Con los entornos ROS cargados, `python3 -m unittest discover -s tests -p 'test_f
 incluye también regresiones de concurrencia y validación de cabeceras del adaptador,
 sin crear un grafo ROS ni conectarse al robot.
 
-## Activación del ensayo físico (pendiente de validación con NAO)
+## Activación del ensayo físico supervisado
 
 Antes de ejecutar: una sola persona, suelo plano previamente despejado, sin escaleras ni obstáculos, cabeza estable mirando al frente y cámara alineada con la base. Un supervisor debe poder utilizar la parada física independiente. No ejecutar teleoperación, otras aplicaciones de movimiento, otro servidor Capabilities2 ni otra instancia de YOLO sobre el mismo tópico. No interpretar el caminar de la persona como garantía de camino seguro.
 
@@ -173,6 +174,22 @@ ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person i
 ```
 
 Permanecer visible y centrado antes de iniciar. Empezar quieto; no caminar hasta comprobar el sentido de respuesta. Probar avance y giro en ensayos separados. Una persona demasiado cerca o una caja recortada pueden producir solo ceros; no acercarse al robot para forzar el giro. Ante fallo, revisar y reiniciar manualmente: no se reanuda automáticamente tras perder el objetivo.
+
+### Ajustar la velocidad sin cambiar la separación visual
+
+Para revisar primero las propuestas con máximo de **0.10 m/s**, sin movimiento:
+
+```bash
+ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=320 image_height:=240 expected_frame:=CameraTop_optical_frame max_forward_speed:=0.1 timeout:=20.0
+```
+
+Con fuente, sentido de respuesta y paradas comprobados, el siguiente comando habilita un ensayo supervisado corto de dos segundos con ese máximo:
+
+```bash
+ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=320 image_height:=240 expected_frame:=CameraTop_optical_frame max_forward_speed:=0.1 enable_motion:=true confirm:=MOVER duration:=2.0 timeout:=20.0
+```
+
+La nueva configuración de 0.10 m/s no está validada físicamente por la corrida anterior. Es posible usar `max_forward_speed:=0.05` como incremento intermedio. No iniciar una sesión larga por el solo hecho de aceptar el parámetro: comprobar primero movimiento y parada con supervisión. La rampa del proveedor puede impedir alcanzar el máximo en un ensayo corto. Los límites de giro, pérdida de persona, antigüedad de imagen, watchdog y cancelación no cambian. Una mayor velocidad puede aumentar el recorrido antes de detenerse; el tamaño visual objetivo no equivale a una distancia de seguridad en metros.
 
 Para la configuración solicitada de duración máxima de cinco minutos y timeout de dos minutos:
 
@@ -196,7 +213,9 @@ ROS_LOCALHOST_ONLY=1 ROS_DOMAIN_ID=182 python3 tests/unified_hri_follow_motion_p
 
 ## Evidencia y límites
 
-La ampliación a 300 s y corrección de Ctrl+C pasó **105/105 unitarias, 21/21 integración dos veces y 20/20 regresión preview**. La repetición comprueba cero recibido en menos de 1 s tras SIGINT al hijo, al launch y al grupo completo, sin órdenes posteriores distintas de cero, con confirmación de parada y liberación de ambas capacidades. Se verifican 120/300 s con reloj simulado; las ejecuciones ROS con configuración larga se cancelan anticipadamente. No se ha validado una sesión física ni una sesión ROS continua de cinco minutos. Compilación, sintaxis y CTest 1/1 aprobaron; no hay type-checker estático ni ESLint configurados. [Evidencia y fallo de cierre anterior](results/follow_person_duration_20261019/README.md).
+El máximo configurable de avance pasó **117/117 unitarias y 26/26 comprobaciones ROS con interfaces simuladas**, incluida saturación a 0.05/0.10 m/s, preview sin actuación y cancelación del grupo de procesos con máximo 0.10. Compilación colcon y sintaxis Python aprobaron; no hay type-checker estático ni ESLint configurados. La respuesta predeterminada coincide exactamente con la versión anterior en 2139 geometrías sintéticas. [Informe compacto generado](results/follow_person_speed_20261019.json); las trazas completas permanecen en la carpeta temporal del contenedor indicada en él. Esto no valida físicamente la nueva velocidad.
+
+La ampliación a 300 s y corrección de Ctrl+C pasó **105/105 unitarias, 21/21 integración dos veces y 20/20 regresión preview**. La repetición comprueba cero recibido en menos de 1 s tras SIGINT al hijo, al launch y al grupo completo, sin órdenes posteriores distintas de cero, con confirmación de parada y liberación de ambas capacidades. Se verifican 120/300 s con reloj simulado; las ejecuciones ROS con configuración larga se cancelan anticipadamente. No se ha validado una sesión continua de cinco minutos, ni física ni con el backend simulado. Compilación, sintaxis y CTest 1/1 aprobaron; no hay type-checker estático ni ESLint configurados. [Evidencia y fallo de cierre anterior](results/follow_person_duration_20261019/README.md).
 
 La integración inicial con movimiento pasó **87/87 unitarias, 18/18 integración ampliada, 20/20 regresión preview, 12/12 MoveVelocity en dos corridas, 22/22 proveedor directo y 3/3 conflictos de origen**. Colcon, sintaxis Python y CTest 1/1 aprobaron. Todo con interfaces simuladas, sin robots. Informes y fallo previo conservados en [evidencia del incremento](results/follow_person_motion_20261019/README.md).
 
@@ -209,7 +228,9 @@ y 19 de integración del nuevo modo. Las regresiones de los otros modos y un
 fallo intermitente original de exclusión en MoveVelocity se detallan en
 [la evidencia](results/follow_person_preview_20261019/README.md). En este incremento se incorporan las comprobaciones de fuente descritas arriba y se corrige el ejecutor del modo de velocidad, sin aumentar su watchdog. El autor aportó una corrida preview aprobada con cámara NAO (133 frames recibidos) y corridas fallidas posteriores por pérdida, caducidad y discontinuidad. Son evidencia de la versión anterior, distinta de las repeticiones simplificadas posteriores.
 
-La conexión a MoveVelocity está implementada con activación explícita; no se afirma seguimiento físico validado. El driver actual no tiene un watchdog independiente de comandos: la pérdida del proveedor o de la comunicación no garantiza una parada física. Un cero en preview no detiene ningún robot.
+El autor confirmó que NAO lo siguió físicamente en una corrida con `duration:=300.0`, `timeout:=120.0` y el máximo anterior predeterminado de 0.03 m/s. El fragmento aportado muestra unos 120 s en `FOLLOW_PERSON`, `follow_trial_completed` y la transición exitosa de `STOP_MOTION_SUCCESS` a `FREE_MOTION_SUCCESS`. No incluye el JSON final: no se atribuyen a esa corrida campos de liberación ni otras métricas que no aparecen. Esta observación no valida seguimiento a 0.10 m/s, separación métrica, evitación de obstáculos ni seguimiento físico en Pepper.
+
+El driver actual no tiene un watchdog independiente de comandos: la pérdida del proveedor o de la comunicación no garantiza una parada física. Un cero en preview no detiene ningún robot.
 
 El autor ya repitió la simplificación con cámara real de NAO: tres previews de 20 s terminaron con `preview_completed` y `released: true`, con 117/115, 126/124 y 130/128 frames recibidos/adquiridos, respectivamente (396 muestras cada uno). La primera mostró propuestas de giro de ambos signos; la última avance entre aproximadamente 0.00518 y 0.02464 m/s, con giro cero. En las tres: `dry_run: true`, `motion_enabled: false`, `physical_success_verified: false`. Es evidencia de percepción y control propuesto, no de seguimiento físico.
 

@@ -20,6 +20,7 @@ class FollowLaunchArgumentsTest(unittest.TestCase):
     def arguments(self, mode="follow_person", **overrides):
         values = dict(image_width="320", image_height="240", expected_frame="camera",
                       minimum_confidence="", target_height_ratio="0.6", timeout="",
+                      max_forward_speed="0.03",
                       enable_motion="false", confirm="", duration="2.0",
                       vx="0.02", vy="0", wz="0")
         values.update(overrides)
@@ -40,6 +41,28 @@ class FollowLaunchArgumentsTest(unittest.TestCase):
                            if isinstance(action, DeclareLaunchArgument) and action.name == "timeout")
         declaration.execute(context)
         self.assertEqual(context.launch_configurations["timeout"], "")
+
+    def test_speed_default_and_explicit_values_are_forwarded_without_motion_opt_in(self):
+        self.assertEqual(float(self.value(self.arguments(), "--max-forward-speed")), 0.03)
+        for maximum in ("0.01", "0.05", "0.1"):
+            with self.subTest(maximum=maximum):
+                args = self.arguments(max_forward_speed=maximum)
+                self.assertEqual(float(self.value(args, "--max-forward-speed")), float(maximum))
+                self.assertNotIn("--enable-motion", args)
+
+    def test_launch_declares_conservative_speed_default(self):
+        context = LaunchContext()
+        declaration = next(action for action in MODULE.generate_launch_description().entities
+                           if isinstance(action, DeclareLaunchArgument)
+                           and action.name == "max_forward_speed")
+        declaration.execute(context)
+        self.assertEqual(float(context.launch_configurations["max_forward_speed"]), 0.03)
+
+    def test_invalid_speed_is_rejected_with_or_without_motion(self):
+        for enabled in ("true", "false"):
+            for maximum in ("0", "-0.1", "0.10001", "nan", "inf", "-inf", "true"):
+                with self.subTest(enabled=enabled, maximum=maximum), self.assertRaises(RuntimeError):
+                    self.arguments(max_forward_speed=maximum, enable_motion=enabled, confirm="MOVER")
 
     def test_long_follow_duration_and_timeout_are_preserved(self):
         for duration in ("0.1", "120", "300"):

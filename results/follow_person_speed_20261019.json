@@ -1,0 +1,788 @@
+{
+  "started_utc": "2026-10-20T00:01:04.234495+00:00",
+  "checks": [
+    {
+      "name": "rejects_confirmation",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-20-00-01-05-398838-docker-desktop-17095\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Follow motion requires confirm:=MOVER and duration in [0.1,300]\n"
+    },
+    {
+      "name": "rejects_empty_confirmation",
+      "passed": true,
+      "output_tail": "malformed launch argument 'confirm:=', expected format '<name>:=<value>'\n"
+    },
+    {
+      "name": "rejects_malformed_opt_in",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-20-00-01-05-662687-docker-desktop-17101\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): enable_motion must be true or false\n"
+    },
+    {
+      "name": "rejects_duration_zero",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-20-00-01-05-836178-docker-desktop-17104\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Follow motion requires confirm:=MOVER and duration in [0.1,300]\n"
+    },
+    {
+      "name": "rejects_duration_long",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-20-00-01-06-013853-docker-desktop-17107\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Follow motion requires confirm:=MOVER and duration in [0.1,300]\n"
+    },
+    {
+      "name": "rejects_duration_nan",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-20-00-01-06-185736-docker-desktop-17110\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Follow motion requires confirm:=MOVER and duration in [0.1,300]\n"
+    },
+    {
+      "name": "rejects_duration_inf",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-20-00-01-06-355463-docker-desktop-17113\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Follow motion requires confirm:=MOVER and duration in [0.1,300]\n"
+    },
+    {
+      "name": "rejects_timeout_long",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-20-00-01-06-529972-docker-desktop-17116\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): Use confidence [0.5,1], target_height_ratio [0.3,0.8], timeout [1,300]\n"
+    },
+    {
+      "name": "rejects_speed_above_limit",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-20-00-01-06-704031-docker-desktop-17119\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): max_forward_speed must be finite and within (0, 0.10] m/s\n"
+    },
+    {
+      "name": "rejects_speed_nan",
+      "passed": true,
+      "output_tail": "[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-10-20-00-01-06-877522-docker-desktop-17122\n[INFO] [launch]: Default logging verbosity is set to INFO\n[ERROR] [launch]: Caught exception in launch (see debug for traceback): max_forward_speed must be finite and within (0, 0.10] m/s\n"
+    },
+    {
+      "name": "confirmation_without_opt_in_stays_preview",
+      "passed": true,
+      "application": {
+        "outcome": "application_succeeded",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": true,
+        "motion_enabled": false,
+        "physical_success_verified": false,
+        "message": "preview_completed",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": false,
+        "commands_sent": 0,
+        "frames_received": 29,
+        "tracked_frames": 27,
+        "preview_samples": 60
+      },
+      "velocity_publishers_seen": [],
+      "backend_counts": {
+        "/hri/cmd_vel": 0,
+        "/nao/cmd_vel": 0,
+        "/pepper/cmd_vel": 0
+      }
+    },
+    {
+      "name": "speed_0_1_preview_without_actuation",
+      "passed": true,
+      "application": {
+        "outcome": "application_succeeded",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": true,
+        "motion_enabled": false,
+        "physical_success_verified": false,
+        "message": "preview_completed",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": false,
+        "commands_sent": 0,
+        "frames_received": 29,
+        "tracked_frames": 27,
+        "preview_samples": 60
+      },
+      "velocity_publishers_seen": [],
+      "backend_counts": {
+        "/hri/cmd_vel": 0,
+        "/nao/cmd_vel": 0,
+        "/pepper/cmd_vel": 0
+      }
+    },
+    {
+      "name": "nao_directions",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=nao"
+      ],
+      "interrupt_target": null,
+      "max_forward_speed_m_s": 0.03,
+      "first_zero_after_interrupt_s": null,
+      "zero_deadline_s": null,
+      "remained_zero_after_stop": null,
+      "application": {
+        "outcome": "application_succeeded",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "follow_trial_completed",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": true,
+        "commands_sent": 78,
+        "frames_received": 40,
+        "tracked_frames": 38,
+        "preview_samples": 80
+      },
+      "launch_exit_code": 0,
+      "source_frames": 49,
+      "preview_count": 80,
+      "backend_command_count": 116,
+      "maximum_received_vx_m_s": 0.01833333333333333,
+      "final_backend_command": [
+        100284.997997624,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "other_backend_command_count": 0
+    },
+    {
+      "name": "pepper_directions",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=pepper"
+      ],
+      "interrupt_target": null,
+      "max_forward_speed_m_s": 0.03,
+      "first_zero_after_interrupt_s": null,
+      "zero_deadline_s": null,
+      "remained_zero_after_stop": null,
+      "application": {
+        "outcome": "application_succeeded",
+        "mode": "follow_person",
+        "robot": "pepper",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "follow_trial_completed",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": true,
+        "commands_sent": 77,
+        "frames_received": 39,
+        "tracked_frames": 37,
+        "preview_samples": 79
+      },
+      "launch_exit_code": 0,
+      "source_frames": 49,
+      "preview_count": 79,
+      "backend_command_count": 116,
+      "maximum_received_vx_m_s": 0.01833333333333333,
+      "final_backend_command": [
+        100293.068097419,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "other_backend_command_count": 0
+    },
+    {
+      "name": "nao_speed_cap",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=nao",
+        "max_forward_speed:=0.1"
+      ],
+      "interrupt_target": null,
+      "max_forward_speed_m_s": 0.1,
+      "first_zero_after_interrupt_s": null,
+      "zero_deadline_s": null,
+      "remained_zero_after_stop": null,
+      "application": {
+        "outcome": "application_succeeded",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "follow_trial_completed",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": true,
+        "commands_sent": 77,
+        "frames_received": 39,
+        "tracked_frames": 37,
+        "preview_samples": 79
+      },
+      "launch_exit_code": 0,
+      "source_frames": 50,
+      "preview_count": 79,
+      "backend_command_count": 117,
+      "maximum_received_vx_m_s": 0.1,
+      "final_backend_command": [
+        100300.923508923,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "other_backend_command_count": 0
+    },
+    {
+      "name": "nao_speed_cap_medium",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=nao",
+        "max_forward_speed:=0.05"
+      ],
+      "interrupt_target": null,
+      "max_forward_speed_m_s": 0.05,
+      "first_zero_after_interrupt_s": null,
+      "zero_deadline_s": null,
+      "remained_zero_after_stop": null,
+      "application": {
+        "outcome": "application_succeeded",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "follow_trial_completed",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": true,
+        "commands_sent": 78,
+        "frames_received": 40,
+        "tracked_frames": 38,
+        "preview_samples": 80
+      },
+      "launch_exit_code": 0,
+      "source_frames": 50,
+      "preview_count": 80,
+      "backend_command_count": 117,
+      "maximum_received_vx_m_s": 0.05,
+      "final_backend_command": [
+        100309.122987635,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "other_backend_command_count": 0
+    },
+    {
+      "name": "nao_person_loss",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=nao"
+      ],
+      "interrupt_target": null,
+      "max_forward_speed_m_s": 0.03,
+      "first_zero_after_interrupt_s": null,
+      "zero_deadline_s": null,
+      "remained_zero_after_stop": null,
+      "application": {
+        "outcome": "application_failed",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "person_missing",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": true,
+        "commands_sent": 9,
+        "frames_received": 4,
+        "tracked_frames": 1,
+        "preview_samples": 10
+      },
+      "launch_exit_code": 0,
+      "source_frames": 14,
+      "preview_count": 10,
+      "backend_command_count": 47,
+      "maximum_received_vx_m_s": 0.009722891700000002,
+      "final_backend_command": [
+        100313.344626428,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "other_backend_command_count": 0
+    },
+    {
+      "name": "nao_stream_loss",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=nao"
+      ],
+      "interrupt_target": null,
+      "max_forward_speed_m_s": 0.03,
+      "first_zero_after_interrupt_s": null,
+      "zero_deadline_s": null,
+      "remained_zero_after_stop": null,
+      "application": {
+        "outcome": "application_failed",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "stale_or_future_image",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": true,
+        "commands_sent": 20,
+        "frames_received": 3,
+        "tracked_frames": 1,
+        "preview_samples": 21
+      },
+      "launch_exit_code": 0,
+      "source_frames": 3,
+      "preview_count": 21,
+      "backend_command_count": 56,
+      "maximum_received_vx_m_s": 0.01833333333333333,
+      "final_backend_command": [
+        100318.139775722,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "other_backend_command_count": 0
+    },
+    {
+      "name": "nao_stale_frame",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=nao"
+      ],
+      "interrupt_target": null,
+      "max_forward_speed_m_s": 0.03,
+      "first_zero_after_interrupt_s": null,
+      "zero_deadline_s": null,
+      "remained_zero_after_stop": null,
+      "application": {
+        "outcome": "application_failed",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "stale_or_future_image",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": true,
+        "commands_sent": 8,
+        "frames_received": 4,
+        "tracked_frames": 1,
+        "preview_samples": 9
+      },
+      "launch_exit_code": 0,
+      "source_frames": 13,
+      "preview_count": 9,
+      "backend_command_count": 46,
+      "maximum_received_vx_m_s": 0.004993608300000001,
+      "final_backend_command": [
+        100322.302185224,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "other_backend_command_count": 0
+    },
+    {
+      "name": "nao_ambiguous",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=nao"
+      ],
+      "interrupt_target": null,
+      "max_forward_speed_m_s": 0.03,
+      "first_zero_after_interrupt_s": null,
+      "zero_deadline_s": null,
+      "remained_zero_after_stop": null,
+      "application": {
+        "outcome": "application_failed",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "ambiguous_people",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": true,
+        "commands_sent": 10,
+        "frames_received": 5,
+        "tracked_frames": 2,
+        "preview_samples": 11
+      },
+      "launch_exit_code": 0,
+      "source_frames": 14,
+      "preview_count": 11,
+      "backend_command_count": 47,
+      "maximum_received_vx_m_s": 0.014994895800000001,
+      "final_backend_command": [
+        100326.591401142,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "other_backend_command_count": 0
+    },
+    {
+      "name": "nao_interrupt",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=nao"
+      ],
+      "interrupt_target": "application",
+      "max_forward_speed_m_s": 0.03,
+      "first_zero_after_interrupt_s": 0.002388332999544218,
+      "zero_deadline_s": 1,
+      "remained_zero_after_stop": true,
+      "application": {
+        "outcome": "application_failed",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "cancelled_or_ros_shutdown",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": true,
+        "commands_sent": 27,
+        "frames_received": 3,
+        "tracked_frames": 1,
+        "preview_samples": 29
+      },
+      "launch_exit_code": 0,
+      "source_frames": 14,
+      "preview_count": 9,
+      "backend_command_count": 90,
+      "maximum_received_vx_m_s": 0.0049602292,
+      "final_backend_command": [
+        100332.058450812,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "other_backend_command_count": 0
+    },
+    {
+      "name": "nao_launch_interrupt_long",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=nao",
+        "duration:=300.0",
+        "timeout:=120.0"
+      ],
+      "interrupt_target": "launch",
+      "max_forward_speed_m_s": 0.03,
+      "first_zero_after_interrupt_s": 0.005185582995181903,
+      "zero_deadline_s": 1,
+      "remained_zero_after_stop": true,
+      "application": {
+        "outcome": "application_failed",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "cancelled_or_ros_shutdown",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": true,
+        "commands_sent": 7,
+        "frames_received": 3,
+        "tracked_frames": 1,
+        "preview_samples": 9
+      },
+      "launch_exit_code": 0,
+      "source_frames": 13,
+      "preview_count": 9,
+      "backend_command_count": 43,
+      "maximum_received_vx_m_s": 0.005000000000000001,
+      "final_backend_command": [
+        100336.503150814,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "other_backend_command_count": 0
+    },
+    {
+      "name": "nao_process_group_interrupt_long",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=nao",
+        "max_forward_speed:=0.1",
+        "duration:=300.0",
+        "timeout:=300.0"
+      ],
+      "interrupt_target": "process_group",
+      "max_forward_speed_m_s": 0.1,
+      "first_zero_after_interrupt_s": 0.0032263750035781413,
+      "zero_deadline_s": 1,
+      "remained_zero_after_stop": true,
+      "application": {
+        "outcome": "application_failed",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "cancelled_or_ros_shutdown",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": true,
+        "commands_sent": 7,
+        "frames_received": 3,
+        "tracked_frames": 1,
+        "preview_samples": 9
+      },
+      "launch_exit_code": 0,
+      "source_frames": 13,
+      "preview_count": 9,
+      "backend_command_count": 32,
+      "maximum_received_vx_m_s": 0.005000000000000001,
+      "final_backend_command": [
+        100340.681305899,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "other_backend_command_count": 0
+    },
+    {
+      "name": "nao_duplicate_commands",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=nao"
+      ],
+      "interrupt_target": null,
+      "max_forward_speed_m_s": 0.03,
+      "first_zero_after_interrupt_s": null,
+      "zero_deadline_s": null,
+      "remained_zero_after_stop": null,
+      "application": {
+        "outcome": "application_failed",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "multiple_velocity_publishers",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": false,
+        "commands_sent": 0,
+        "frames_received": 0,
+        "tracked_frames": 0,
+        "preview_samples": 1
+      },
+      "launch_exit_code": 0,
+      "source_frames": 5,
+      "preview_count": 1,
+      "backend_command_count": 3,
+      "maximum_received_vx_m_s": 0,
+      "final_backend_command": [
+        100343.492945859,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "other_backend_command_count": 0
+    },
+    {
+      "name": "nao_duplicate_status",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=nao"
+      ],
+      "interrupt_target": null,
+      "max_forward_speed_m_s": 0.03,
+      "first_zero_after_interrupt_s": null,
+      "zero_deadline_s": null,
+      "remained_zero_after_stop": null,
+      "application": {
+        "outcome": "application_failed",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "cancelled_or_motion_provider_not_ready",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": false,
+        "commands_sent": 0,
+        "frames_received": 0,
+        "tracked_frames": 0,
+        "preview_samples": 1
+      },
+      "launch_exit_code": 0,
+      "source_frames": 5,
+      "preview_count": 1,
+      "backend_command_count": 103,
+      "maximum_received_vx_m_s": 0,
+      "final_backend_command": [
+        100351.317130821,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "other_backend_command_count": 0
+    },
+    {
+      "name": "nao_missing_backend",
+      "passed": true,
+      "launch_arguments": [
+        "robot:=nao"
+      ],
+      "interrupt_target": null,
+      "max_forward_speed_m_s": 0.03,
+      "first_zero_after_interrupt_s": null,
+      "zero_deadline_s": null,
+      "remained_zero_after_stop": null,
+      "application": {
+        "outcome": "application_failed",
+        "mode": "follow_person",
+        "robot": "nao",
+        "capability": "hri_capability_interfaces/DetectPeople",
+        "provider": "hri_yolo_providers/YoloDetectPeople",
+        "dry_run": false,
+        "motion_enabled": true,
+        "physical_success_verified": false,
+        "message": "cancelled_or_motion_provider_not_ready",
+        "released": true,
+        "people_released": true,
+        "motion_released": true,
+        "stop_acknowledged": false,
+        "commands_sent": 0,
+        "frames_received": 0,
+        "tracked_frames": 0,
+        "preview_samples": 1
+      },
+      "launch_exit_code": 0,
+      "source_frames": 5,
+      "preview_count": 1,
+      "backend_command_count": 0,
+      "maximum_received_vx_m_s": 0,
+      "other_backend_command_count": 0
+    }
+  ],
+  "evidence_directory": "/tmp/portable-hri-follow-motion-probe-ayyzeu8m",
+  "limits": [
+    "Fake backend subscribers, not physical robot validation.",
+    "Final zero proves a delivered command, not actuator stop."
+  ],
+  "passed": true,
+  "summary_note": "Compact summary derived from generated integration result; full command streams retained at evidence_directory inside Docker. No physical robot execution."
+}

@@ -31,6 +31,8 @@ def parse_args(argv=None):
     parser.add_argument("--expected-frame", required=True)
     parser.add_argument("--minimum-confidence", type=float, default=0.65)
     parser.add_argument("--target-height-ratio", type=float, default=0.6)
+    parser.add_argument("--max-forward-speed", type=float, default=0.03,
+                        help="Forward speed ceiling in m/s (0, 0.10]; also scales proportional response.")
     parser.add_argument("--timeout", type=float, default=120.0,
                         help="Observation limit in seconds (1–300); motion uses min(timeout, duration).")
     parser.add_argument("--enable-motion", action="store_true")
@@ -48,6 +50,8 @@ def parse_args(argv=None):
         parser.error("Use confidence in [0.5, 1] and target height ratio in [0.3, 0.8].")
     if not 1 <= args.timeout <= 300:
         parser.error("Follow timeout must be in [1, 300] seconds.")
+    if not math.isfinite(args.max_forward_speed) or not 0 < args.max_forward_speed <= 0.10:
+        parser.error("Follow max-forward-speed must be finite and within (0, 0.10] m/s.")
     if args.enable_motion and (args.confirm != "MOVER" or not math.isfinite(args.duration)
                                or not 0.1 <= args.duration <= 300.0):
         parser.error("Motion requires --confirm MOVER and finite duration in [0.1, 300] seconds.")

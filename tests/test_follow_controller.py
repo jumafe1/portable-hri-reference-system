@@ -45,6 +45,47 @@ class FollowControllerTest(unittest.TestCase):
         self.assertEqual(decision.vx, 0.03)
         self.assertEqual(decision.wz, 0.0)
 
+    def test_configured_speed_scales_gain_and_saturates_at_its_limit(self) -> None:
+        for maximum in (0.01, 0.03, 0.05, 0.10):
+            for height, expected in ((240.0, maximum / 3.0), (120.0, maximum)):
+                with self.subTest(maximum=maximum, height=height):
+                    self.controller = Controller(Config(640, 480, max_forward_speed=maximum))
+                    decision = self.acquire(replace(self.person, height=height))
+                    self.assertAlmostEqual(decision.vx, expected)
+                    self.assertEqual(decision.wz, 0.0)
+
+    def test_higher_speed_preserves_heading_clipping_and_distance_gates(self) -> None:
+        for changes, expected_vx, expected_wz in (
+            ({"center_x": 384.0}, 0.0, -0.04),
+            ({"height": 288.0}, 0.0, 0.0),
+            ({"height": 340.0}, 0.0, 0.0),
+            ({"height": 340.0, "center_x": 540.0}, 0.0, -0.1),
+            ({"center_x": 50.0}, 0.0, 0.0),
+        ):
+            with self.subTest(changes=changes):
+                self.controller = Controller(Config(640, 480, max_forward_speed=0.1))
+                decision = self.acquire(replace(self.person, **changes))
+                self.assertEqual(decision.vx, expected_vx)
+                self.assertAlmostEqual(decision.wz, expected_wz)
+
+    def test_higher_speed_still_latches_person_loss_and_stale_input(self) -> None:
+        for failure in ("person_missing", "stale_detection"):
+            with self.subTest(failure=failure):
+                self.controller = Controller(Config(640, 480, max_forward_speed=0.1))
+                self.assertEqual(self.acquire().vx, 0.1)
+                decision = (self.controller.update([], 0.3) if failure == "person_missing"
+                            else self.controller.tick(1.0))
+                self.assert_zero(decision)
+                self.assertEqual(decision.reason, failure)
+                self.assert_zero(self.controller.update([self.person], 1.1))
+
+    def test_speed_configuration_rejects_invalid_values(self) -> None:
+        self.assertEqual(Config(640, 480).max_forward_speed, 0.03)
+        for maximum in (0, -0.1, 0.10001, float("nan"), float("inf"),
+                        -float("inf"), True, False, "0.1", None):
+            with self.subTest(maximum=maximum), self.assertRaises(ValueError):
+                Config(640, 480, max_forward_speed=maximum)
+
     def test_right_turn_sign_and_saturation(self) -> None:
         decision = self.acquire(replace(self.person, center_x=540.0))
         self.assertEqual((decision.vx, decision.wz), (0.0, -0.10))

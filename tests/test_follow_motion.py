@@ -24,6 +24,20 @@ class FollowMotionArgumentsTest(unittest.TestCase):
         self.assertFalse(args.enable_motion)
         self.assertEqual(args.duration, 2.0)
         self.assertEqual(args.timeout, 120.0)
+        self.assertEqual(args.max_forward_speed, 0.03)
+
+    def test_configured_speed_is_accepted_without_enabling_motion(self):
+        for maximum in ("0.01", "0.03", "0.05", "0.1"):
+            with self.subTest(maximum=maximum):
+                args = parse_args(self.BASE + ["--max-forward-speed", maximum])
+                self.assertEqual(args.max_forward_speed, float(maximum))
+                self.assertFalse(args.enable_motion)
+
+    def test_invalid_speed_is_rejected_before_motion(self):
+        for maximum in ("0", "-0.1", "0.10001", "nan", "inf", "-inf", "true"):
+            with self.subTest(maximum=maximum), redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    parse_args(self.BASE + ["--max-forward-speed", maximum])
 
     def test_confirmation_alone_does_not_enable_motion(self):
         args = parse_args(self.BASE + ["--confirm", "MOVER"])
@@ -74,6 +88,7 @@ class FollowMotionTransportTest(unittest.TestCase):
         self.session.cancelled.is_set.return_value = False
         self.session.node.count_publishers.return_value = 1
         self.session.await_future.return_value = True
+        self.session.controller.config.max_forward_speed = 0.03
         self.motion = FollowMotion(self.session)
         self.motion.publisher.get_subscription_count.return_value = 1
         self.clock = 100.0
@@ -125,6 +140,24 @@ class FollowMotionTransportTest(unittest.TestCase):
                        (0.0, -0.10001), (float("nan"), 0.0), (0.0, float("inf"))):
             with self.subTest(vx=vx, wz=wz):
                 self.assertEqual(self.motion.send(self.decision(vx, wz)), "invalid_follow_velocity")
+        self.motion.publisher.publish.assert_not_called()
+
+    def test_configured_speed_is_accepted_but_never_exceeded(self):
+        self.motion.acquired = True
+        for maximum in (0.05, 0.1):
+            with self.subTest(maximum=maximum):
+                self.session.controller.config.max_forward_speed = maximum
+                self.assertEqual(self.motion.send(self.decision(maximum, 0.0)), "")
+                self.assertEqual(self.motion.publisher.publish.call_args.args[0].linear.x, maximum)
+                sent = self.motion.commands_sent
+                self.assertEqual(self.motion.send(self.decision(maximum + 0.00001, 0.0)),
+                                 "invalid_follow_velocity")
+                self.assertEqual(self.motion.commands_sent, sent)
+
+    def test_absolute_transport_limit_survives_invalid_configuration(self):
+        self.motion.acquired = True
+        self.session.controller.config.max_forward_speed = 0.3
+        self.assertEqual(self.motion.send(self.decision(0.11, 0.0)), "invalid_follow_velocity")
         self.motion.publisher.publish.assert_not_called()
 
     def test_stale_or_faulted_status_never_publishes(self):
@@ -184,7 +217,11 @@ class FollowMotionTransportTest(unittest.TestCase):
 
     def test_stop_sends_only_zero_even_after_cancel_and_requires_new_ack(self):
         self.motion.acquired = True
+        self.session.controller.config.max_forward_speed = 0.1
+        self.assertEqual(self.motion.send(self.decision(0.1, 0.0)), "")
+        self.motion.publisher.publish.reset_mock()
         self.session.cancelled.is_set.return_value = True
+        self.assertEqual(self.motion.send(self.decision(0.1, 0.0)), "motion_not_armed_or_cancelled")
 
         def advance(seconds):
             self.clock += seconds

@@ -20,6 +20,7 @@ class Config:
     minimum_confidence: float = 0.65
     target_height_ratio: float = 0.6
     max_age: float = 0.75
+    max_forward_speed: float = 0.03
 
     def __post_init__(self) -> None:
         for value in (self.image_width, self.image_height):
@@ -31,6 +32,8 @@ class Config:
             raise ValueError("target_height_ratio must be within (0.05, 0.95)")
         if not _finite(self.max_age) or self.max_age <= 0:
             raise ValueError("max_age must be positive and finite")
+        if not _finite(self.max_forward_speed) or not 0 < self.max_forward_speed <= 0.10:
+            raise ValueError("max_forward_speed must be finite and within (0, 0.10] m/s")
 
 
 @dataclass(frozen=True)
@@ -173,7 +176,10 @@ class Controller:
             return self._decision
         vx = 0.0
         if abs(error) <= 0.15 and height_ratio < self.config.target_height_ratio - 0.05:
-            vx = min(0.03, 0.10 * (self.config.target_height_ratio - height_ratio))
+            # Scale the response as well as its ceiling; default preserves the
+            # original gain. Apparent size remains a proxy, not metric distance.
+            gain = 0.10 * (self.config.max_forward_speed / 0.03)
+            vx = min(self.config.max_forward_speed, gain * (self.config.target_height_ratio - height_ratio))
         reason = "preview_following" if vx != 0 or wz != 0 else "target_in_visual_deadband"
         self._decision = Decision(vx, wz, reason, True)
         return self._decision

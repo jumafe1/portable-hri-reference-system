@@ -67,6 +67,7 @@ def application_arguments(context, mode, robot):
             width, height = (int(argument(context, name)) for name in ("image_width", "image_height"))
             confidence = float(argument(context, "minimum_confidence") or "0.65")
             ratio = float(argument(context, "target_height_ratio"))
+            max_forward_speed = float(argument(context, "max_forward_speed"))
             timeout = float(argument(context, "timeout") or "120.0")
         except ValueError as error:
             raise RuntimeError("Follow preview requires integer dimensions and numeric thresholds") from error
@@ -78,6 +79,8 @@ def application_arguments(context, mode, robot):
             raise RuntimeError("Follow preview arguments must be finite")
         if not 0.5 <= confidence <= 1 or not 0.3 <= ratio <= 0.8 or not 1 <= timeout <= 300:
             raise RuntimeError("Use confidence [0.5,1], target_height_ratio [0.3,0.8], timeout [1,300]")
+        if not math.isfinite(max_forward_speed) or not 0 < max_forward_speed <= 0.10:
+            raise RuntimeError("max_forward_speed must be finite and within (0, 0.10] m/s")
         enabled = argument(context, "enable_motion").strip().lower()
         if enabled not in {"true", "false"}:
             raise RuntimeError("enable_motion must be true or false")
@@ -89,7 +92,7 @@ def application_arguments(context, mode, robot):
         return args + ["--image-width", str(width), "--image-height", str(height),
                        "--expected-frame", argument(context, "expected_frame"),
                        "--minimum-confidence", str(confidence), "--target-height-ratio", str(ratio),
-                       "--timeout", str(timeout)]
+                       "--timeout", str(timeout), "--max-forward-speed", str(max_forward_speed)]
 
     if argument(context, "confirm") != "MOVER":
         raise RuntimeError('Movement requires confirm:=MOVER')
@@ -213,6 +216,7 @@ def generate_launch_description():
         DeclareLaunchArgument("image_height", default_value="0", description="Actual camera height, required for follow preview"),
         DeclareLaunchArgument("expected_frame", default_value="", description="Exact camera image header.frame_id"),
         DeclareLaunchArgument("target_height_ratio", default_value="0.6", description="Visual box-height fraction, NOT meters"),
+        DeclareLaunchArgument("max_forward_speed", default_value="0.03", description="Follow forward ceiling in m/s (0,0.10]; scales proportional response, not a constant speed"),
         DeclareLaunchArgument("enable_motion", default_value="false", description="Explicit opt-in for supervised follow motion"),
         DeclareLaunchArgument("detections_topic", default_value="/yolo/detections"),
         DeclareLaunchArgument("x", default_value="0.0"),

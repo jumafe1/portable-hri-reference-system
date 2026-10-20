@@ -82,13 +82,14 @@ class FollowSessionTest(unittest.TestCase):
         self.assertIs(session.spin_thread, thread_type.return_value)
         self.assertEqual(node.create_client.call_count, 2)
         self.assertIsNone(session.motion)
+        self.assertEqual(session.controller.config.max_forward_speed, 0.03)
         node.create_publisher.assert_called_once()
         self.assertEqual(node.create_publisher.call_args.args[1], "/hri/follow_person/preview")
 
     def test_motion_transport_is_created_only_after_explicit_opt_in(self):
         args = SimpleNamespace(image_width=640, image_height=480,
                                minimum_confidence=0.65, target_height_ratio=0.6,
-                               enable_motion=True)
+                               enable_motion=True, max_forward_speed=0.1)
         with patch("follow_session.Node"), \
                 patch("follow_session.SingleThreadedExecutor"), \
                 patch("follow_session.threading.Thread"), \
@@ -96,6 +97,23 @@ class FollowSessionTest(unittest.TestCase):
             session = FollowSession(args, threading.Event())
         motion_type.assert_called_once_with(session)
         self.assertIs(session.motion, motion_type.return_value)
+        self.assertEqual(session.controller.config.max_forward_speed, 0.1)
+
+    def test_preview_propagates_configured_speed_without_creating_motion_transport(self):
+        args = SimpleNamespace(image_width=640, image_height=480,
+                               minimum_confidence=0.65, target_height_ratio=0.6,
+                               enable_motion=False, max_forward_speed=0.1)
+        with patch("follow_session.Node"), \
+                patch("follow_session.SingleThreadedExecutor"), \
+                patch("follow_session.threading.Thread"), \
+                patch("follow_session.FollowMotion") as motion_type:
+            session = FollowSession(args, threading.Event())
+        self.assertEqual(session.controller.config.max_forward_speed, 0.1)
+        motion_type.assert_not_called()
+        person = Person(0.9, "", 320.0, 240.0, 100.0, 120.0)
+        for now in (0.1, 0.2, 0.3):
+            decision = session.controller.update([person], now)
+        self.assertEqual(decision.vx, 0.1)
 
     def test_constructor_cleans_owned_node_if_subscription_creation_fails(self):
         args = SimpleNamespace(image_width=640, image_height=480,

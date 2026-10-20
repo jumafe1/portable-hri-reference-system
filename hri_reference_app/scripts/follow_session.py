@@ -33,6 +33,7 @@ class FollowSession:
             image_width=args.image_width, image_height=args.image_height,
             minimum_confidence=args.minimum_confidence,
             target_height_ratio=args.target_height_ratio,
+            max_forward_speed=getattr(args, "max_forward_speed", 0.03),
         ))
         self.frames = 0
         self.finished = False

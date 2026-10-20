@@ -89,7 +89,8 @@ class FollowMotion:
         if time.monotonic() - stamp >= 0.5 or status not in {"ready", "moving", "stopped"}:
             return "motion_status_lost_or_faulted"
         if not all(math.isfinite(v) for v in (decision.vx, decision.wz)) or not (
-            0.0 <= decision.vx <= 0.03 and abs(decision.wz) <= 0.10
+            0.0 <= decision.vx <= self.session.controller.config.max_forward_speed <= 0.10
+            and abs(decision.wz) <= 0.10
         ):
             return "invalid_follow_velocity"
         command = Twist()

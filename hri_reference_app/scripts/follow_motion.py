@@ -60,21 +60,31 @@ class FollowMotion:
             blackboard["message"] = "motion_provider_not_running"
             return ABORT
         deadline, stable_since = time.monotonic() + 5.0, None
+        handshake_started = None
         while rclpy.ok() and not self.session.cancelled.is_set() and time.monotonic() < deadline:
             now = time.monotonic()
             status, stamp = self.status
             error = self.graph_error()
-            if status in {"multiple_velocity_publishers", "velocity_source_changed", "invalid_command"}:
+            if status in {"multiple_velocity_publishers", "velocity_source_changed",
+                          "invalid_velocity_source", "invalid_command"}:
                 blackboard["message"] = status
                 return ABORT
             if error:
                 stable_since = None
+                handshake_started = None
             else:
                 if stable_since is None:
                     stable_since = now
                 if now - stable_since >= 0.5 and now - stamp < 0.5 and status in {"ready", "stopped"}:
-                    self.acquired = True
-                    return SUCCEED
+                    # Pin the legitimate delivery identity with zero, then require
+                    # a new software acknowledgement before admitting any motion.
+                    if handshake_started is None:
+                        handshake_started = now
+                    self.publisher.publish(Twist())
+                    if (status == "stopped" and stamp > handshake_started
+                            and now - handshake_started >= 0.5):
+                        self.acquired = True
+                        return SUCCEED
             time.sleep(0.02)
         blackboard["message"] = "cancelled_or_motion_provider_not_ready"
         return ABORT

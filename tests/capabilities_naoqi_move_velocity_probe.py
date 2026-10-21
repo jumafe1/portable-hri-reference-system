@@ -219,6 +219,8 @@ def main():
         probe.check("backend_appearance_does_not_replay_command",
                     ready and all(zero(values) for _, values in samples))
 
+        start = publish_for(publisher, twist(), 0.7)
+        probe.check("startup_zero_acknowledged", await_zero(recorder, start, "stopped"))
         start = publish_for(publisher, twist(0.04, -0.02, 0.08), duration=0.9)
         samples = recorder.since(start)
         nonzero = [values for _, values in samples if not zero(values)]
@@ -283,6 +285,8 @@ def main():
         samples = recorder.since(start)
         probe.check("backend_disconnection_invalidates_command", disappeared and ready and bool(samples)
                     and all(zero(values) for _, values in samples))
+        start = publish_for(publisher, twist(), 0.7)
+        probe.check("backend_reconnect_zero_acknowledged", await_zero(recorder, start, "stopped"))
         probe.check("velocity_blocks_relative_activation",
                     denied_use(RELATIVE, RELATIVE_PROVIDER), running=probe.running())
 
@@ -334,6 +338,8 @@ def main():
         node.destroy_node()
         rclpy.shutdown()
     report["checks"] = probe.checks
+    with recorder.lock:
+        report["observed_statuses"] = list(recorder.statuses)
     report["passed"] = bool(probe.checks) and "execution_error" not in report and all(
         check["passed"] for check in probe.checks)
     (evidence / "result.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

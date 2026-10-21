@@ -128,8 +128,10 @@ class VelocitySession:
             blackboard["message"] = "requested_provider_not_running"
             return ABORT
         deadline = time.monotonic() + 5.0
+        stable_since = handshake_started = None
         while rclpy.ok() and not self.cancelled.is_set() and time.monotonic() < deadline:
-            if self.status_is({"multiple_velocity_publishers", "velocity_source_changed"}):
+            if self.status_is({"multiple_velocity_publishers", "velocity_source_changed",
+                               "invalid_velocity_source", "invalid_command"}):
                 blackboard["message"] = self.status[0]
                 return ABORT
             if self.node.count_publishers("/hri/cmd_vel") != 1:
@@ -141,10 +143,22 @@ class VelocitySession:
                 blackboard["message"] = "ambiguous_velocity_provider_endpoints"
                 return ABORT
             if self.publisher.get_subscription_count() == 1 and self.node.count_publishers("/hri/move_velocity/status") == 1:
-                if self.status_is({"ready", "stopped"}):
-                    self.acquired = True
+                now = time.monotonic()
+                if stable_since is None:
+                    stable_since = now
+                if now - stable_since >= 0.5 and self.status_is({"ready", "stopped"}):
+                    status, received = self.status
+                    if handshake_started is None:
+                        handshake_started = now
                     self.publisher.publish(Twist())
-                    return SUCCEED
+                    # Stream duration begins only after a new zero acknowledgement
+                    # and the provider's post-handshake settling interval.
+                    if (status == "stopped" and received > handshake_started
+                            and now - handshake_started >= 0.5):
+                        self.acquired = True
+                        return SUCCEED
+            else:
+                stable_since = handshake_started = None
             time.sleep(PERIOD_SECONDS)
         blackboard["message"] = "cancelled" if self.cancelled.is_set() else "provider_not_ready"
         return ABORT

@@ -173,7 +173,24 @@ class FollowMotionTransportTest(unittest.TestCase):
         self.session.running_client.call_async.return_value.result.return_value = SimpleNamespace(
             running_capabilities=[SimpleNamespace(capability=capability)])
 
-    def test_ready_handshake_requires_half_second_of_stable_graph(self):
+    def test_ready_handshake_requires_stable_graph_zero_and_new_ack(self):
+        self.wait_ready_fixture()
+
+        def advance(seconds):
+            self.clock += seconds
+            self.motion.status = ("stopped" if self.motion.publisher.publish.called else "ready", self.clock)
+
+        with patch("follow_motion.time.sleep", side_effect=advance):
+            self.assertEqual(self.motion.wait_ready(self.board), SUCCEED)
+        self.assertGreaterEqual(self.clock, 101.0)
+        self.assertTrue(self.motion.acquired)
+        self.assertGreater(self.motion.publisher.publish.call_count, 1)
+        for call in self.motion.publisher.publish.call_args_list:
+            command = call.args[0]
+            self.assertEqual((command.linear.x, command.linear.y, command.linear.z,
+                              command.angular.x, command.angular.y, command.angular.z), (0.0,) * 6)
+
+    def test_ready_without_zero_ack_times_out_without_arming(self):
         self.wait_ready_fixture()
 
         def advance(seconds):
@@ -181,10 +198,37 @@ class FollowMotionTransportTest(unittest.TestCase):
             self.motion.status = ("ready", self.clock)
 
         with patch("follow_motion.time.sleep", side_effect=advance):
-            self.assertEqual(self.motion.wait_ready(self.board), SUCCEED)
-        self.assertGreaterEqual(self.clock, 100.5)
-        self.assertTrue(self.motion.acquired)
-        self.motion.publisher.publish.assert_not_called()
+            self.assertEqual(self.motion.wait_ready(self.board), ABORT)
+        self.assertFalse(self.motion.acquired)
+        self.assertTrue(self.motion.publisher.publish.called)
+        self.assertEqual(self.board["message"], "cancelled_or_motion_provider_not_ready")
+
+    def test_old_stopped_status_does_not_ack_startup_zero(self):
+        self.wait_ready_fixture()
+        self.motion.status = ("stopped", self.clock)
+
+        def advance(seconds):
+            self.clock += seconds
+            if not self.motion.publisher.publish.called:
+                self.motion.status = ("stopped", self.clock)
+
+        with patch("follow_motion.time.sleep", side_effect=advance):
+            self.assertEqual(self.motion.wait_ready(self.board), ABORT)
+        self.assertFalse(self.motion.acquired)
+        self.assertTrue(self.motion.publisher.publish.called)
+
+    def test_source_fault_after_startup_zero_prevents_arming(self):
+        self.wait_ready_fixture()
+
+        def advance(seconds):
+            self.clock += seconds
+            status = "velocity_source_changed" if self.motion.publisher.publish.called else "ready"
+            self.motion.status = (status, self.clock)
+
+        with patch("follow_motion.time.sleep", side_effect=advance):
+            self.assertEqual(self.motion.wait_ready(self.board), ABORT)
+        self.assertFalse(self.motion.acquired)
+        self.assertEqual(self.board["message"], "velocity_source_changed")
 
     def test_wrong_running_provider_cannot_arm(self):
         self.session.running_client.call_async.return_value.result.return_value = SimpleNamespace(

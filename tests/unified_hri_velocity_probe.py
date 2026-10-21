@@ -151,6 +151,31 @@ def main():
                                                            if stamp >= start],
                                      "first_commands": commands[:6], "last_commands": commands[-6:]})
 
+        start = time.monotonic()
+        code, output = launch(["robot:=nao", "vx:=0.04", "duration:=0.1", "confirm:=MOVER"])
+        result = parse_result(output)
+        (evidence / "short_duration.log").write_text(output, encoding="utf-8")
+        commands = recorders["nao"].since(start)
+        moving = [(stamp, values) for stamp, values in commands if not zero(values)]
+        with statuses.lock:
+            startup_stops = [stamp for stamp, status in statuses.statuses
+                             if stamp >= start and status == "stopped"]
+        # A short trial need not attain the requested ramp target, but must send
+        # actual nonzero output after zero acknowledgement, then stop and release.
+        passed = (code == 0 and result.get("outcome") == "application_succeeded"
+                  and result.get("released") is True
+                  and result.get("stop_acknowledged") is True
+                  and result.get("physical_success_verified") is False
+                  and bool(moving) and bool(startup_stops)
+                  and startup_stops[0] < moving[0][0]
+                  and all(0 < values[0] <= 0.04 and values[1:] == [0.0] * 5
+                          for _, values in moving)
+                  and zero(commands[-1][1]) and not recorders["pepper"].since(start))
+        report["checks"].append({"name": "short_duration_moves_after_handshake_stops_releases",
+                                 "passed": passed, "application": result,
+                                 "first_stopped_at": startup_stops[0] if startup_stops else None,
+                                 "moving_commands": moving, "last_commands": commands[-5:]})
+
         result, commands = interrupt_during_motion(recorders["nao"], evidence, "hri_app", signal.SIGINT)
         report["checks"].append({"name": "application_sigint_stops_and_releases",
                                  "passed": result.get("outcome") == "application_failed"

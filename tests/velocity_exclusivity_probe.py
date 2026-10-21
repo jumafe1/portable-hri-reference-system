@@ -68,14 +68,29 @@ def main():
         if not heartbeat.wait_until_formed(Duration(seconds=5)):
             raise RuntimeError("Bond failed to form.")
 
+        acquisitions = 0
+
         def use():
+            nonlocal acquisitions
+            acquisitions += 1
             start = time.monotonic()
             probe.api(srv.UseCapability, "use_capability", capability=CAPABILITY,
                       preferred_provider=PROVIDER, bond_id=bond)
             if not await_zero(recorder, start, "ready", timeout=4):
                 raise RuntimeError("Provider did not become ready.")
+            start = publish_for(publisher, twist(), 0.7)
+            samples = recorder.since(start)
+            accepted = await_zero(recorder, start, "stopped") and bool(samples) and all(
+                zero(values) for _, values in samples)
+            report["checks"].append({"name": f"original_source_zero_accepted_{acquisitions}",
+                                     "passed": accepted})
+            if not accepted:
+                raise RuntimeError("Provider did not acknowledge original-source startup zero.")
             start = publish_for(publisher, twist(0.03), 0.5)
-            if not any(not zero(values) for _, values in recorder.since(start)):
+            accepted = any(not zero(values) for _, values in recorder.since(start))
+            report["checks"].append({"name": f"original_source_motion_accepted_{acquisitions}",
+                                     "passed": accepted})
+            if not accepted:
                 raise RuntimeError("Provider did not move fake backend before fault injection.")
 
         def free():
@@ -129,7 +144,9 @@ def main():
         node.destroy_node()
         rclpy.shutdown()
         log.close()
-    report["passed"] = len(report["checks"]) == 3 and "execution_error" not in report and all(
+    with recorder.lock:
+        report["observed_statuses"] = list(recorder.statuses)
+    report["passed"] = len(report["checks"]) == 9 and "execution_error" not in report and all(
         check["passed"] for check in report["checks"])
     (evidence / "result.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2))

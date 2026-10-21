@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-21",
+  "scope": "software-only, isolated ROS 2 Jazzy Docker, fake backend subscribers",
+  "physical_success_verified": false,
+  "provider_base_commit": "ba0ef7966057b0cbdac8cd505e0d0b13d748bdc1",
+  "application_base_commit": "bbdad283a5ee60fa1256630d7bc5e4ae8e759ff3",
+  "tested_revision": "working-tree correction on the base commits; not yet committed or published",
+  "versions": {
+    "rmw_cyclonedds_cpp": "2.2.4",
+    "rmw_fastrtps_cpp": "8.4.4",
+    "rclpy": "7.1.11",
+    "rmw": "7.3.3"
+  },
+  "original_provider_reproduction": {
+    "rmw": "rmw_cyclonedds_cpp",
+    "expected_failure_reproduced": true,
+    "sequence": ["ready", "velocity_source_changed"],
+    "failed_check": "original_source_zero_accepted_1",
+    "execution_error": "Provider did not acknowledge original-source startup zero.",
+    "docker_evidence": "/tmp/portable-hri-velocity-exclusivity-pylqjtcf/result.json"
+  },
+  "identity_diagnostics": [
+    {
+      "rmw": "rmw_cyclonedds_cpp",
+      "graph_gid": "01108031820cfeb927f121b900002803",
+      "sample_gid": "0c5a2cce08eba4b20000000000000000",
+      "cross_representation_equal": false,
+      "stable_zero_samples": 8,
+      "passed": true
+    },
+    {
+      "rmw": "rmw_fastrtps_cpp",
+      "graph_gid": "010fdc8c4187919f0000000000002503",
+      "sample_gid": "010fdc8c4187919f0000000000002503",
+      "cross_representation_equal": true,
+      "stable_zero_samples": 8,
+      "passed": true
+    }
+  ],
+  "correction": [
+    "Pin graph and delivery identities independently; never compare bytes between representations.",
+    "Bind delivery identity only from valid zero with available backend; hold zero for 500 ms after binding.",
+    "Latch changed or invalid identities, including malformed commands; release/reacquire is required to reset.",
+    "Both application clients require stable graph, fresh zero acknowledgement and startup settling before arming.",
+    "Standalone movement duration begins after the startup handshake."
+  ],
+  "validation": {
+    "colcon_build_passed": true,
+    "cpp_ctest_passed": 3,
+    "python_follow_unit_tests_passed": 178,
+    "python_velocity_unit_tests_passed": 4,
+    "python_compileall_passed": true,
+    "diff_check_passed": true,
+    "python_static_typechecker": "not configured; compileall checks syntax only",
+    "eslint": "not configured; not a JavaScript project",
+    "independent_code_review": "no remaining blocking defect identified"
+  },
+  "integration": [
+    {"rmw": "rmw_cyclonedds_cpp", "suite": "velocity_exclusivity", "checks_passed": 9, "passed": true, "docker_evidence": "/tmp/portable-hri-velocity-exclusivity-prb25s1o/result.json"},
+    {"rmw": "rmw_cyclonedds_cpp", "suite": "velocity_provider", "checks_passed": 24, "passed": true, "docker_evidence": "/tmp/portable-hri-velocity-probe-o6bwzx_p/result.json"},
+    {"rmw": "rmw_cyclonedds_cpp", "suite": "follow_person", "checks_passed": 28, "passed": true, "docker_evidence": "/tmp/portable-hri-follow-motion-probe-tzvp0tcg/result.json"},
+    {"rmw": "rmw_cyclonedds_cpp", "suite": "standalone_velocity", "checks_passed": 13, "passed": true, "docker_evidence": "/tmp/portable-hri-app-velocity-probe-de8etp_c/result.json"},
+    {"rmw": "rmw_fastrtps_cpp", "suite": "velocity_exclusivity", "checks_passed": 9, "passed": true, "docker_evidence": "/tmp/portable-hri-velocity-exclusivity-6iln8k_x/result.json"},
+    {"rmw": "rmw_fastrtps_cpp", "suite": "velocity_provider", "checks_passed": 24, "passed": true, "docker_evidence": "/tmp/portable-hri-velocity-probe-l_em3o_l/result.json"},
+    {"rmw": "rmw_fastrtps_cpp", "suite": "follow_person", "checks_passed": 28, "passed": true, "docker_evidence": "/tmp/portable-hri-follow-motion-probe-i_ta2dqx/result.json"},
+    {"rmw": "rmw_fastrtps_cpp", "suite": "standalone_velocity", "checks_passed": 13, "passed": true, "docker_evidence": "/tmp/portable-hri-app-velocity-probe-xpkdynkz/result.json"}
+  ],
+  "integration_checks_passed": 148,
+  "limits": [
+    "No robot or laboratory configuration was changed; CycloneDDS was installed only in the isolated development container.",
+    "No physical motion or stop is proven by these tests or by a stopped status.",
+    "Graph discovery is asynchronous; continuity guards are not authentication or an atomic distributed lock.",
+    "The middleware/version/configuration of the successful October 19 physical trial remains unverified.",
+    "Camera-orientation and speech-capture faults are outside this correction."
+  ],
+  "passed": true
+}

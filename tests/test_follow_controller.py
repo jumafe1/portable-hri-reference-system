@@ -8,7 +8,7 @@ import unittest
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "hri_reference_app/scripts/follow_controller.py"
-SPEC = importlib.util.spec_from_file_location("follow_controller", SCRIPT)
+SPEC = importlib.util.spec_from_file_location("_follow_controller_unit", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = MODULE

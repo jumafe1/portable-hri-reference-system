@@ -217,17 +217,20 @@ class Frames:
             raise RuntimeError(f"Synthetic publisher failed: {self.publish_error}")
 
 
-def launch(arguments, path, fixture=None, interrupt=False):
+def launch(arguments, path, fixture=None, interrupt=False, until=None):
     command = ["ros2", "launch", "hri_reference_app", "hri_app.launch.py",
                "mode:=follow_person", "image_width:=320", "image_height:=240",
-               "expected_frame:=test_camera", "timeout:=3.0", *arguments]
+               "expected_frame:=test_camera", *arguments]
     with path.open("w", encoding="utf-8") as log:
         process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT,
                                    text=True, start_new_session=True)
         try:
             if interrupt:
-                if not wait_until(fixture.locked, 12.0):
-                    raise RuntimeError("No target lock before SIGINT test")
+                if not wait_until(lambda: (until or fixture.locked)()
+                                  or process.poll() is not None, 12.0):
+                    raise RuntimeError("Expected preview evidence absent before SIGINT test")
+                if process.poll() is not None:
+                    return process.returncode, path.read_text(encoding="utf-8")
                 output = path.read_text(encoding="utf-8")
                 match = re.search(r"\[hri_app-\d+\]: process started with pid \[(\d+)\]", output)
                 if not match:
@@ -268,7 +271,8 @@ def main():
             raise RuntimeError(f"Domain is not isolated; refusing to run: {strangers}")
         fixture = Fixture(node)
         rejected = [("width", "image_width:=0"), ("height", "image_height:=-1"),
-                    ("timeout", "timeout:=301"), ("nan_timeout", "timeout:=nan"),
+                    ("removed_timeout", "timeout:=120.0"),
+                    ("removed_duration", "duration:=2.0"),
                     ("confidence", "minimum_confidence:=1.1"),
                     ("height_ratio", "target_height_ratio:=0")]
         for name, argument in rejected:
@@ -302,15 +306,20 @@ def main():
             start = time.monotonic()
             try:
                 arguments = [f"robot:={robot}", f"detections_topic:={topic}"]
-                if name == "interrupt":
-                    arguments.append("timeout:=5.0")
+                awaiting_target = name in ("empty", "ambiguous")
+                controlled_stop = success or awaiting_target or name == "interrupt"
+                # Harness deadlines bound this test, not the application's life.
+                # Fresh frames without one unique person remain safely waiting
+                # beyond the separate 5s initial-no-stream watchdog.
+                minimum_samples = 120 if awaiting_target else 60
+                until = (lambda: len(fixture.snapshot(start)[0]) >= minimum_samples) if (
+                    success or awaiting_target) else None
                 code, output = launch(arguments, evidence / f"{name}.log", fixture,
-                                      interrupt=name == "interrupt")
+                                      interrupt=controlled_stop, until=until)
                 result = parse_result(output)
                 time.sleep(0.15)
                 previews, invalid, publishers, counts = fixture.snapshot(start)
-                expected = "application_succeeded" if success else "application_failed"
-                passed = (result.get("outcome") == expected
+                passed = (result.get("outcome") == "application_failed"
                           and result.get("mode") == "follow_person"
                           and result.get("robot") == robot
                           and result.get("dry_run") is True
@@ -320,11 +329,16 @@ def main():
                           and not invalid and not publishers and not any(counts.values())
                           and bool(previews) and all(p.get("dry_run") is True for p in previews)
                           and preview_is_zero(previews[-1]))
+                if controlled_stop:
+                    passed = passed and result.get("message") == "cancelled_or_ros_shutdown"
                 if success:
                     passed = passed and result.get("tracked_frames", 0) >= 3
                     passed = passed and any(not preview_is_zero(p) for p in previews)
-                elif name == "empty":
-                    passed = passed and result.get("message") == "no_target_acquired"
+                elif awaiting_target:
+                    passed = (passed and result.get("frames_received", 0) > 0
+                              and len(previews) >= minimum_samples
+                              and all(preview_is_zero(p) and not p.get("locked")
+                                      for p in previews))
                 if name in ("late_loss", "duplicate_stamp"):
                     passed = passed and any(p.get("locked") is True for p in previews)
                 if name == "single_person_changes":

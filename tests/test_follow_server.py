@@ -1,6 +1,8 @@
 """Real POSIX subprocess shutdown tests; no ROS graph or hardware."""
 
 import importlib.util
+from contextlib import redirect_stderr
+import io
 import os
 from pathlib import Path
 import select
@@ -22,6 +24,21 @@ SPEC.loader.exec_module(MODULE)
 
 @unittest.skipUnless(os.name == "posix", "POSIX signals and sessions required")
 class FollowServerShutdownTest(unittest.TestCase):
+    def test_invalid_cli_grace_never_spawns(self):
+        for args in (["--grace-seconds"], ["--grace-seconds", "32"],
+                     ["--grace-seconds", "nan", "--", "unused"],
+                     ["--grace-seconds", "61", "--", "unused"],
+                     ["--grace-seconds", "0", "--", "unused"],
+                     ["--grace-seconds", "32", "wrong", "unused"]):
+            with self.subTest(args=args), patch.object(MODULE.subprocess, "Popen") as spawn, \
+                    redirect_stderr(io.StringIO()):
+                self.assertEqual(MODULE.main(args), 2)
+                spawn.assert_not_called()
+
+    def test_cli_grace_keeps_child_arguments_and_exit_code(self):
+        self.assertEqual(MODULE.main(["--grace-seconds", "32", "--", sys.executable,
+                                      "-c", "raise SystemExit(7)"]), 7)
+
     def start(self, child_code, *, grace=0.3, interrupt=0.15, terminate=0.15):
         runner = (
             "import importlib.util; "

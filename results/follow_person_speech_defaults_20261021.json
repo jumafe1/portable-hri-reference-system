@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-21",
+  "scope": "FollowPerson transcription lifecycle and simplified Spanish defaults",
+  "build": {
+    "passed": true,
+    "packages": ["hri_capability_interfaces", "hri_naoqi_providers", "hri_whisper_providers", "hri_reference_app"]
+  },
+  "unit_tests": {
+    "follow": {"passed": 175, "failed": 0},
+    "transcribe_mode": {"passed": 11, "failed": 0},
+    "continuity": {"windows": 7, "simulated_seconds": 350, "total_session_deadline": false}
+  },
+  "ros_integration": {
+    "passed": 10,
+    "failed": 0,
+    "full_report_in_docker": "/tmp/portable-hri-follow-speech-probe-y4f_xrk_/result.json",
+    "cases": ["disabled", "repeated", "print", "reject", "absent", "wrong_id", "stale", "pending_cancel", "preview", "visual_loss"],
+    "record_duration_argument_supplied": false,
+    "speech_language_argument_supplied": false,
+    "all_received_capture_settings": [3.0, "es"],
+    "repeated_case": {
+      "completed_windows": 3,
+      "nonempty_transcripts": 2,
+      "silence_resumed": true,
+      "observed_duration_at_least_seconds": 9,
+      "maximum_motion_command_gap_below_seconds": 0.5
+    },
+    "cancel_and_visual_loss_release_voice": true
+  },
+  "python_compileall_passed": true,
+  "static_python_type_checker_configured": false,
+  "eslint_configured": false,
+  "physical_success_verified": false,
+  "real_audio": false,
+  "real_whisper_inference": false,
+  "continuous_gapless_listening": false,
+  "standalone_capture_duration_preserved": true
+}

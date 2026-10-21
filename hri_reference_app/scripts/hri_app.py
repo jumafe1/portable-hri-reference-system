@@ -18,6 +18,7 @@ MODES = {
     "move_relative": move_demo,
     "move_velocity": "velocity_mode",
     "follow_person": "follow_mode",
+    "transcribe_speech": "transcribe_mode",
 }
 
 

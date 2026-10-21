@@ -22,8 +22,9 @@ class FollowMotionArgumentsTest(unittest.TestCase):
     def test_default_remains_preview(self):
         args = parse_args(self.BASE)
         self.assertFalse(args.enable_motion)
-        self.assertEqual(args.duration, 2.0)
-        self.assertEqual(args.timeout, 120.0)
+        self.assertFalse(hasattr(args, "duration"))
+        self.assertFalse(hasattr(args, "timeout"))
+        self.assertEqual(args.minimum_confidence, 0.65)
         self.assertEqual(args.max_forward_speed, 0.03)
 
     def test_configured_speed_is_accepted_without_enabling_motion(self):
@@ -44,9 +45,9 @@ class FollowMotionArgumentsTest(unittest.TestCase):
         self.assertFalse(args.enable_motion)
 
     def test_explicit_opt_in_and_confirmation(self):
-        args = parse_args(self.BASE + ["--enable-motion", "--confirm", "MOVER", "--duration", "2"])
+        args = parse_args(self.BASE + ["--enable-motion", "--confirm", "MOVER"])
         self.assertTrue(args.enable_motion)
-        self.assertEqual(args.duration, 2.0)
+        self.assertFalse(hasattr(args, "duration"))
 
     def test_motion_without_exact_confirmation_is_rejected(self):
         for confirmation in ([], ["--confirm", "mover"], ["--confirm", "YES"]):
@@ -54,32 +55,15 @@ class FollowMotionArgumentsTest(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     parse_args(self.BASE + ["--enable-motion"] + confirmation)
 
-    def test_invalid_motion_duration_is_rejected(self):
-        for duration in ("0", "-1", "0.09", "300.01", "301", "nan", "inf", "-inf"):
-            with self.subTest(duration=duration), redirect_stderr(io.StringIO()):
-                with self.assertRaises(SystemExit):
-                    parse_args(self.BASE + ["--enable-motion", "--confirm", "MOVER",
-                                            "--duration", duration])
-
-    def test_bounded_duration_endpoints_are_accepted(self):
-        for duration in ("0.1", "5.0", "120.0", "300.0"):
-            with self.subTest(duration=duration):
-                args = parse_args(self.BASE + ["--enable-motion", "--confirm", "MOVER",
-                                              "--duration", duration])
-                self.assertEqual(args.duration, float(duration))
-
-    def test_bounded_timeout_endpoints_are_accepted(self):
-        for timeout in ("1", "120", "300"):
-            with self.subTest(timeout=timeout):
-                args = parse_args(self.BASE + ["--timeout", timeout])
-                self.assertEqual(args.timeout, float(timeout))
-                self.assertFalse(args.enable_motion)
-
-    def test_invalid_timeout_is_rejected(self):
-        for timeout in ("0", "0.99", "300.01", "301", "nan", "inf", "-inf"):
-            with self.subTest(timeout=timeout), redirect_stderr(io.StringIO()):
-                with self.assertRaises(SystemExit):
-                    parse_args(self.BASE + ["--timeout", timeout])
+    def test_legacy_temporal_flags_are_rejected_not_ignored(self):
+        for flag in ("--duration", "--timeout"):
+            for value in ("0", "2", "120", "300", "nan", "inf"):
+                for motion in ([], ["--enable-motion", "--confirm", "MOVER"]):
+                    with self.subTest(flag=flag, value=value, motion=motion):
+                        errors = io.StringIO()
+                        with redirect_stderr(errors), self.assertRaises(SystemExit):
+                            parse_args(self.BASE + motion + [flag, value])
+                        self.assertIn("unrecognized arguments", errors.getvalue())
 
 
 class FollowMotionTransportTest(unittest.TestCase):

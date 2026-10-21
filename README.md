@@ -2,16 +2,35 @@
 
 Integración y pruebas reproducibles de la arquitectura portable HRI sobre ROS 2.
 
+## Orientación opcional de cámara y transcripción local
+
+`OrientCamera` se integra de forma opcional en el ensayo de seguimiento, con
+pausa de la base durante los ajustes. `TranscribeSpeech` puede añadirse mediante
+`transcribe_speech:=true confirm_listen:=ESCUCHAR`, incluso en preview. Usa español
+por defecto, sin indicar duración ni idioma en el comando normal. Captura ventanas
+internas de 3 s, espera el procesamiento y repite mientras FollowPerson siga
+activo, salvo fallo de voz; no escucha sin interrupciones ni genera respuestas.
+Conserva también un modo independiente de una ventana para pruebas.
+El worker Whisper se inicia aparte, como YOLO; el texto se observa en otra
+terminal con `ros2 topic echo /hri/speech/transcript --field text`. Un fallo de voz
+deshabilita esa capacidad opcional sin desactivar las protecciones del seguimiento.
+Preparación, comandos, privacidad, fallback y limitaciones en
+[CAMERA_AND_SPEECH.md](CAMERA_AND_SPEECH.md). Este incremento tiene validación
+software, no pruebas físicas; las dependencias/modelo de Whisper para ASR real
+siguen pendientes. La configuración simplificada quedó verificada en
+[el informe más reciente](results/follow_person_speech_defaults_20261021.json).
+
 ## Seguimiento visual: preview y ensayo supervisado
 
 `hri_app` incorpora `mode:=follow_person`: YASMIN adquiere `DetectPeople` mediante
 Capabilities2 y calcula propuestas limitadas de avance/giro para una única persona.
 **Por defecto solo publica diagnóstico, sin activar MoveVelocity.** Con
-`enable_motion:=true confirm:=MOVER` adquiere también `MoveVelocity` para un ensayo
-con `duration` de hasta 300 s y `timeout` predeterminado de 120 s; aplica el menor.
-Mantiene preview por defecto y duración predeterminada de 2 s. Solicita parada y
-liberación al terminar o cancelar con Ctrl+C. Validación software realizada; seguimiento físico aún
-pendiente. Preparación, comando NAO y límites de la parada en [FOLLOW_PERSON.md](FOLLOW_PERSON.md).
+`enable_motion:=true confirm:=MOVER` adquiere también `MoveVelocity` para seguimiento
+continuo, sin `duration` ni `timeout` total. Mantiene preview por defecto y
+protecciones de confianza, frescura y salud. Solicita parada y liberación ante
+fallo o Ctrl+C. El autor confirmó seguimiento físico en la versión anterior;
+este incremento continuo y la cámara orientable requieren validación propia.
+Preparación, comando NAO y límites de parada en [FOLLOW_PERSON.md](FOLLOW_PERSON.md).
 
 ## Velocidad continua portable
 
@@ -186,17 +205,20 @@ física conservada; la prueba física aprobada corresponde al flujo continuo
 
 ## Aplicación portable con YASMIN
 
-`hri_app` es una única entrada Python/YASMIN con tres modos independientes:
-`speak`, `detect_people` y `move_relative`. Selecciona en el mismo proceso la
-máquina de estados del modo solicitado; cada una establece el vínculo con
-Capabilities2, adquiere su contrato, lo usa y libera la capacidad. El servidor
-registra los tres proveedores, pero una ejecución activa solo el necesario.
+`hri_app` es una única entrada Python/YASMIN con los modos `speak`,
+`detect_people`, `move_relative`, `move_velocity`, `follow_person` y
+`transcribe_speech`. Selecciona en el mismo proceso la máquina de estados del
+modo solicitado; cada una establece el vínculo con Capabilities2, adquiere los
+contratos que necesita, los usa y libera las capacidades. Registrar un proveedor
+en el catálogo no significa activarlo automáticamente.
 Los ejecutables antiguos `speak_demo`, `people_demo` y `move_demo` se conservan
 como comandos de regresión; no son tres aplicaciones finales distintas.
 
-La nueva entrada no encadena aún detección, voz y movimiento. Su portabilidad
-se apoya en los contratos `/hri/speak`, `/hri/people` y `/hri/move_relative`,
-sin llamar desde YASMIN a servicios específicos de NAO o Pepper. El `launch`
+`follow_person` combina detección, movimiento autorizado y las capacidades
+opcionales de orientación y transcripción bajo un mismo vínculo. Todavía no
+genera respuestas ni activa `Speak` automáticamente. La portabilidad se apoya
+en contratos `/hri/*`, sin llamar desde YASMIN a servicios específicos de NAO
+o Pepper. El `launch`
 remapea esos servicios para el robot elegido. `detect_people` termina al hallar
 una persona o vencer el plazo; la imagen continua con rectángulos sigue
 disponible aparte en `/yolo/dbg_image` cuando YOLO está activo.

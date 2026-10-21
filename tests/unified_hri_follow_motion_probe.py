@@ -116,18 +116,20 @@ class MotionFrames:
             raise RuntimeError(self.error)
 
 
-def launch(arguments, path, fixture=None, interrupt=None):
+def launch(arguments, path, fixture=None, interrupt=None, until=None):
     command = ["ros2", "launch", "hri_reference_app", "hri_app.launch.py",
                "mode:=follow_person", "enable_motion:=true", "confirm:=MOVER",
-               "image_width:=320", "image_height:=240", "expected_frame:=test_camera",
-               "timeout:=5.0", "duration:=4.0", *arguments]
+               "image_width:=320", "image_height:=240", "expected_frame:=test_camera", *arguments]
     with path.open("w", encoding="utf-8") as log:
         process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT,
                                    text=True, start_new_session=True)
         try:
             if interrupt:
-                if not wait_until(fixture.moved, 15):
-                    raise RuntimeError("No backend command before SIGINT")
+                predicate = until or fixture.moved
+                if not wait_until(lambda: predicate() or process.poll() is not None, 15):
+                    raise RuntimeError("Expected observations missing before SIGINT")
+                if process.poll() is not None:
+                    return process.returncode, path.read_text(encoding="utf-8")
                 fixture.interrupted_at = time.monotonic()
                 if interrupt == "process_group":
                     # A terminal sends Ctrl+C to its foreground process group,
@@ -184,9 +186,13 @@ def main():
         fixture = MotionFixture(node)
         rejected = [("confirmation", "confirm:=NO"), ("empty_confirmation", "confirm:="),
                     ("malformed_opt_in", "enable_motion:=yes"),
-                    ("duration_zero", "duration:=0"), ("duration_long", "duration:=301"),
-                    ("duration_nan", "duration:=nan"), ("duration_inf", "duration:=inf"),
-                    ("timeout_long", "timeout:=301"),
+                    # Follow is indefinite: reject removed options, including
+                    # formerly valid values, instead of testing obsolete bounds.
+                    ("removed_duration_zero", "duration:=0"), ("removed_duration_long", "duration:=301"),
+                    ("removed_duration_nan", "duration:=nan"), ("removed_duration_inf", "duration:=inf"),
+                    ("removed_timeout_long", "timeout:=301"),
+                    ("removed_duration_valid", "duration:=2.0"),
+                    ("removed_timeout_valid", "timeout:=120.0"),
                     ("speed_above_limit", "max_forward_speed:=0.1001"),
                     ("speed_nan", "max_forward_speed:=nan")]
         for name, argument in rejected:
@@ -200,12 +206,14 @@ def main():
         fixture.begin("nao")
         frames = MotionFrames(fixture, "directions")
         try:
-            code, output = launch(["robot:=nao", "enable_motion:=false", "timeout:=3.0"],
-                                  evidence / "confirmation_without_opt_in.log")
+            code, output = launch(["robot:=nao", "enable_motion:=false"],
+                                  evidence / "confirmation_without_opt_in.log", fixture,
+                                  interrupt="process_group", until=lambda: len(fixture.previews) >= 60)
             result = parse_result(output)
             previews, invalid, publishers, counts = fixture.snapshot(fixture.case_start)
             report["checks"].append({"name": "confirmation_without_opt_in_stays_preview",
-                "passed": code == 0 and result.get("outcome") == "application_succeeded"
+                "passed": result.get("outcome") == "application_failed"
+                and result.get("message") == "cancelled_or_ros_shutdown"
                 and result.get("dry_run") is True and result.get("motion_enabled") is False
                 and result.get("released") is True and result.get("commands_sent") == 0
                 and bool(previews) and not invalid and not publishers and not any(counts.values()),
@@ -219,12 +227,14 @@ def main():
         fixture.begin("nao")
         frames = MotionFrames(fixture, "speed_preview")
         try:
-            code, output = launch(["robot:=nao", "enable_motion:=false", "timeout:=3.0",
-                                   "max_forward_speed:=0.1"], evidence / "speed_preview.log")
+            code, output = launch(["robot:=nao", "enable_motion:=false",
+                                   "max_forward_speed:=0.1"], evidence / "speed_preview.log", fixture,
+                                  interrupt="process_group", until=lambda: len(fixture.previews) >= 60)
             result = parse_result(output)
             previews, invalid, publishers, counts = fixture.snapshot(fixture.case_start)
             report["checks"].append({"name": "speed_0_1_preview_without_actuation",
-                "passed": code == 0 and result.get("outcome") == "application_succeeded"
+                "passed": result.get("outcome") == "application_failed"
+                and result.get("message") == "cancelled_or_ros_shutdown"
                 and result.get("dry_run") is True and result.get("motion_enabled") is False
                 and result.get("released") is True and result.get("commands_sent") == 0
                 and any(sample.get("vx_m_s", 0) > 0.03 for sample in previews)
@@ -241,8 +251,8 @@ def main():
                  ("nao", "speed_cap"), ("nao", "speed_cap_medium"),
                  ("nao", "person_loss"), ("nao", "stream_loss"),
                  ("nao", "stale_frame"), ("nao", "ambiguous"),
-                 ("nao", "interrupt"), ("nao", "launch_interrupt_long"),
-                 ("nao", "process_group_interrupt_long"), ("nao", "duplicate_commands"),
+                 ("nao", "interrupt"), ("nao", "launch_interrupt_indefinite"),
+                 ("nao", "process_group_interrupt_indefinite"), ("nao", "duplicate_commands"),
                  ("nao", "duplicate_status"), ("nao", "missing_backend")]
         for robot, case in cases:
             fixture.begin(robot)
@@ -257,18 +267,27 @@ def main():
             frames = MotionFrames(fixture, case)
             try:
                 arguments = [f"robot:={robot}"]
-                max_forward_speed = (0.1 if case in ("speed_cap", "process_group_interrupt_long")
+                max_forward_speed = (0.1 if case in ("speed_cap", "process_group_interrupt_indefinite")
                                      else 0.05 if case == "speed_cap_medium" else 0.03)
                 if max_forward_speed != 0.03:
                     arguments += [f"max_forward_speed:={max_forward_speed}"]
-                interrupt = {"interrupt": "application", "launch_interrupt_long": "launch",
-                             "process_group_interrupt_long": "process_group"}.get(case)
-                if case == "launch_interrupt_long":
-                    arguments += ["duration:=300.0", "timeout:=120.0"]
-                elif case == "process_group_interrupt_long":
-                    arguments += ["duration:=300.0", "timeout:=300.0"]
+                interrupt = {"interrupt": "application", "launch_interrupt_indefinite": "launch",
+                             "process_group_interrupt_indefinite": "process_group"}.get(case)
+                until = None
+                if case == "directions":
+                    interrupt = "process_group"
+                    def until():
+                        commands = fixture.recorders[f"/{robot}/cmd_vel"].since(fixture.case_start)
+                        return (any(v[0] > 0 for _, v in commands)
+                                and any(v[5] > 0 for _, v in commands)
+                                and any(v[5] < 0 for _, v in commands))
+                elif case in ("speed_cap", "speed_cap_medium"):
+                    interrupt = "process_group"
+                    def until():
+                        return any(abs(v[0] - max_forward_speed) < 1e-6 for _, v in
+                                   fixture.recorders[f"/{robot}/cmd_vel"].since(fixture.case_start))
                 code, output = launch(arguments, evidence / f"{robot}_{case}.log",
-                                      fixture, interrupt=interrupt)
+                                      fixture, interrupt=interrupt, until=until)
                 try:
                     result = parse_result(output)
                 except RuntimeError as error:
@@ -279,8 +298,7 @@ def main():
                 commands = fixture.recorders[f"/{robot}/cmd_vel"].since(fixture.case_start)
                 other = "pepper" if robot == "nao" else "nao"
                 other_commands = fixture.recorders[f"/{other}/cmd_vel"].since(fixture.case_start)
-                success = case in ("directions", "speed_cap", "speed_cap_medium")
-                passed = (result.get("outcome") == ("application_succeeded" if success else "application_failed")
+                passed = (result.get("outcome") == "application_failed"
                           and result.get("robot") == robot and result.get("dry_run") is False
                           and result.get("motion_enabled") is True
                           and result.get("physical_success_verified") is False
@@ -295,12 +313,12 @@ def main():
                 else:
                     passed = passed and all(zero(values) for _, values in commands)
                 if case == "directions":
-                    passed = (passed and code == 0
+                    passed = (passed
                               and any(values[0] > 0 for _, values in commands)
                               and any(values[5] > 0 for _, values in commands)
                               and any(values[5] < 0 for _, values in commands))
                 if case in ("speed_cap", "speed_cap_medium"):
-                    passed = (passed and code == 0
+                    passed = (passed
                               and any(values[0] > 0.03 for _, values in commands)
                               and any(abs(values[0] - max_forward_speed) < 1e-6
                                       for _, values in commands))

@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-21",
+  "scope": "Optional TranscribeSpeech within continuous FollowPerson",
+  "build": {
+    "passed": true,
+    "packages": ["hri_capability_interfaces", "hri_naoqi_providers", "hri_whisper_providers", "hri_reference_app"]
+  },
+  "unit_tests": {
+    "follow": {"passed": 172, "failed": 0},
+    "camera_geometry": {"passed": 11, "failed": 0},
+    "transcribe_mode": {"passed": 11, "failed": 0}
+  },
+  "follow_speech_integration": {
+    "passed": 10,
+    "failed": 0,
+    "cases": ["disabled", "repeated", "print", "reject", "absent", "wrong_id", "stale", "pending_cancel", "preview", "visual_loss"],
+    "full_report_in_docker": "/tmp/portable-hri-follow-speech-probe-nprvcir2/result.json",
+    "previous_nine_case_report_in_docker": "/tmp/portable-hri-follow-speech-probe-gz2udr0s/result.json",
+    "verified": [
+      "Voice disabled by default; separate listening consent",
+      "Serial windows, including silence followed by valid text",
+      "Synthetic capture/result processing does not block motion commands",
+      "Text absent from application logs unless printing explicitly enabled",
+      "Voice faults disable voice while visual following continues",
+      "Request correlation and stale audio timestamp rejection",
+      "Ctrl+C and visual loss stop the base before releasing voice",
+      "Late result after visual loss ignored; no new capture",
+      "Preview transcription without base or head commands"
+    ],
+    "termination_note": "Expected cancellation and injected visual loss produce application_failed; checks verify the intended stop and release behavior, not a physical success."
+  },
+  "camera_regression": {
+    "passed": 7,
+    "failed": 0,
+    "full_report_in_docker": "/tmp/portable-hri-follow-camera-probe-vj5vhh6u/result.json"
+  },
+  "provider_ctest": {
+    "hri_naoqi_providers": {"passed": 2, "failed": 0},
+    "hri_whisper_providers": {"passed": 1, "failed": 0}
+  },
+  "validation_limits": {
+    "physical_success_verified": false,
+    "real_microphone_tested": false,
+    "real_whisper_inference_tested": false,
+    "real_yolo_whisper_concurrent_performance_tested": false,
+    "static_python_type_checker_configured": false,
+    "eslint_configured": false,
+    "python_compileall_passed": true,
+    "compileall_is_syntax_only": true,
+    "model_or_dependencies_downloaded": false,
+    "continuous_gapless_listening": false
+  }
+}

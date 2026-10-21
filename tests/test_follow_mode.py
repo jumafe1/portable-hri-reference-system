@@ -19,7 +19,8 @@ import follow_mode
 class FollowModeCleanupTest(unittest.TestCase):
     def run_preview(self, cleanup_error=None, *, diagnostic_error=None,
                     bond_error=None, motion_stop_error=None, motion_release_error=None,
-                    motion_enabled=False):
+                    motion_enabled=False, camera_enabled=False, camera_stop_error=None,
+                    camera_release_error=None):
         session = MagicMock()
         session.frames = 10
         session.tracked_frames = 8
@@ -44,6 +45,23 @@ class FollowModeCleanupTest(unittest.TestCase):
             session.motion.release.side_effect = release_motion
         else:
             session.motion = None
+        session.camera = None
+        if camera_enabled:
+            session.camera = MagicMock()
+            session.camera.requested, session.camera.released = True, False
+            session.camera.status = "camera_ready"
+            session.camera.commands_sent = 2
+            session.camera.hold_acknowledged = False
+            session.camera.stop.return_value = follow_mode.SUCCEED
+            session.camera.stop.side_effect = camera_stop_error
+
+            def release_camera(_blackboard):
+                if camera_release_error:
+                    raise camera_release_error
+                session.camera.released = True
+                return follow_mode.SUCCEED
+
+            session.camera.release.side_effect = release_camera
         events = MagicMock()
         events.attach_mock(session.close_perception, "close_perception")
         events.attach_mock(session.bond.shutdown, "close_bond")
@@ -65,7 +83,8 @@ class FollowModeCleanupTest(unittest.TestCase):
             stack.enter_context(patch("follow_mode.build_state_machine", return_value=finish))
             events.attach_mock(shutdown, "shutdown_ros")
             with redirect_stdout(output):
-                code = follow_mode.run(SimpleNamespace(robot="nao", enable_motion=motion_enabled))
+                code = follow_mode.run(SimpleNamespace(robot="nao", enable_motion=motion_enabled,
+                                                       orient_camera=camera_enabled))
         return SimpleNamespace(code=code, result=json.loads(output.getvalue()),
                                session=session, init=init, shutdown=shutdown,
                                loggers=loggers, handlers=handlers, events=events)
@@ -118,6 +137,26 @@ class FollowModeCleanupTest(unittest.TestCase):
         observed.session.close_perception.assert_called_once()
         observed.shutdown.assert_called_once()
         self.assertIn("bond_cleanup_exception: bond shutdown failed", observed.result["message"])
+
+    def test_camera_stop_failure_cannot_skip_camera_motion_or_people_release(self):
+        observed = self.run_preview(motion_enabled=True, camera_enabled=True,
+                                    camera_stop_error=RuntimeError("camera hold transport failed"))
+        self.assertEqual(observed.code, 1)
+        observed.session.camera.release.assert_called_once()
+        observed.session.motion.release.assert_called_once()
+        observed.session.release_fallback.assert_called_once()
+        self.assertTrue(observed.result["camera_released"])
+        self.assertFalse(observed.result["camera_hold_acknowledged"])
+        self.assertTrue(observed.result["motion_released"])
+
+    def test_camera_release_failure_cannot_skip_motion_or_people_release(self):
+        observed = self.run_preview(motion_enabled=True, camera_enabled=True,
+                                    camera_release_error=RuntimeError("camera release transport failed"))
+        self.assertEqual(observed.code, 1)
+        observed.session.motion.release.assert_called_once()
+        observed.session.release_fallback.assert_called_once()
+        self.assertFalse(observed.result["camera_released"])
+        self.assertFalse(observed.result["released"])
 
     def test_receiver_cleanup_failure_retains_context_and_reports_failure(self):
         observed = self.run_preview(RuntimeError("receiver thread remains alive"))

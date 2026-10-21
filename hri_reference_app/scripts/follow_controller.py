@@ -6,7 +6,8 @@ assumes exactly one participant; the sole eligible detection is the target.
 No identity association is attempted, even when tracking IDs are supplied.
 After acquiring a target, missing/ambiguous/invalid input requires a new Controller.
 The turn sign assumes a forward-facing camera aligned with the robot base;
-this stage does not compensate for head motion or camera extrinsics.
+Optional pitch-only camera control supplies a calibrated angular-size proxy;
+it does not estimate metric range or compensate camera translation/extrinsics.
 """
 
 from dataclasses import dataclass
@@ -130,7 +131,7 @@ class Controller:
             and person.center_y + person.height / 2 <= self.config.image_height
         )
 
-    def update(self, people: list[Person], now: float) -> Decision:
+    def update(self, people: list[Person], now: float, *, height_ratio_override=None) -> Decision:
         """Accept one fresh image's people; do not concatenate robot streams."""
         if self._latched is not None:
             return self._zero(self._latched)
@@ -166,6 +167,10 @@ class Controller:
         )
         if clipped:
             return self._zero("clipped_detection")
+        if height_ratio_override is not None:
+            if not _finite(height_ratio_override) or height_ratio_override <= 0:
+                return self._reject("invalid_angular_height_ratio")
+            height_ratio = height_ratio_override
         error = (person.center_x - self.config.image_width / 2) / (self.config.image_width / 2)
         wz = 0.0 if abs(error) <= 0.08 else max(-0.10, min(0.10, -0.20 * error))
         # Apparent size gates advance, not centering. This proposal is

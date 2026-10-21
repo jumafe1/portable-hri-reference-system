@@ -7,6 +7,7 @@ immediately. The isolated child then gets SIGINT, SIGTERM and SIGKILL, each with
 a bounded wait. This wrapper never changes robot motion or safety settings.
 """
 
+import math
 import signal
 import subprocess
 import sys
@@ -40,6 +41,15 @@ def _reap(child, interrupt_seconds, terminate_seconds):
 def main(argv=None, *, grace_seconds=8.0, interrupt_seconds=2.0,
          terminate_seconds=2.0, poll_seconds=0.02):
     command = sys.argv[1:] if argv is None else list(argv)
+    if command and command[0] == "--grace-seconds":
+        try:
+            grace_seconds = float(command[1])
+            if command[2] != "--" or not math.isfinite(grace_seconds) or not 0 < grace_seconds <= 60:
+                raise ValueError()
+        except (IndexError, ValueError):
+            print("Use --grace-seconds (0,60] -- executable [arguments ...]", file=sys.stderr)
+            return 2
+        command = command[3:]
     if not command:
         print("Usage: graceful_server.py executable [arguments ...]", file=sys.stderr)
         return 2

@@ -38,6 +38,10 @@ install(
     scripts/follow_session.py
     scripts/follow_controller.py
     scripts/follow_motion.py
+    scripts/follow_camera.py
+    scripts/follow_speech.py
+    scripts/camera_geometry.py
+    scripts/transcribe_mode.py
     scripts/graceful_server.py
   DESTINATION lib/${PROJECT_NAME}
 )

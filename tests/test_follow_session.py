@@ -16,13 +16,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "hri_reference_app/
 
 from hri_capability_interfaces.msg import PersonDetection2D, PersonDetection2DArray
 from follow_controller import Config, Controller, Person
-from follow_session import ABORT, PROVIDER, SUCCEED, FollowSession
+from follow_session import ABORT, PROVIDER, FollowSession
 
 
 class FollowSessionTest(unittest.TestCase):
     def setUp(self):
         self.session = FollowSession.__new__(FollowSession)
-        self.session.args = SimpleNamespace(expected_frame="camera_optical", timeout=0.1)
+        self.session.args = SimpleNamespace(expected_frame="camera_optical")
         self.session.cancelled = MagicMock()
         self.session.cancelled.is_set.return_value = False
         self.session.lock = threading.Lock()
@@ -185,13 +185,13 @@ class FollowSessionTest(unittest.TestCase):
         self.assertEqual(self.session.latest_received, 0.32)
         self.assertEqual(self.session.tracked_frames, 2)
 
-    def test_failure_during_last_wait_cannot_be_reported_successful(self):
+    def test_callback_failure_ends_unbounded_observation(self):
         self.acquire()
         clock = [0.3]
 
         def last_wait(_seconds):
             self.session.controller.stop("unexpected_camera_frame")
-            clock[0] = 0.5  # Deadline expired while callback latched the failure.
+            clock[0] = 0.5
 
         self.session.cancelled.wait.side_effect = last_wait
         blackboard = {}
@@ -211,23 +211,27 @@ class FollowSessionTest(unittest.TestCase):
         self.assertTrue(self.session.controller.halted)
         self.assertEqual(self.session.controller.tick(1.0).reason, "unexpected_people_provider")
 
-    def run_timed_follow(self, duration, timeout, *, motion=True, cancel_after=None):
+    def run_until_cancel(self, cancel_after, *, motion=True, empty=False):
         """Advance a fake clock and feed fresh detections; never wait in real time."""
-        self.acquire()
-        self.session.args.duration = duration
-        self.session.args.timeout = timeout
+        if not empty:
+            self.acquire()
         if motion:
             self.session.motion = MagicMock()
             self.session.motion.send.return_value = ""
         clock = [0.3]
-        person = Person(0.9, "person-1", 320.0, 240.0, 100.0, 120.0)
 
         def advance(seconds):
             clock[0] += seconds
-            self.session.controller.update([person], clock[0])
-            if cancel_after is not None and clock[0] >= 0.3 + cancel_after:
+            frame = self.frame()
+            stamp = 100_000_000_000 + round(clock[0] * 1e9)
+            frame.header.stamp.sec, frame.header.stamp.nanosec = divmod(stamp, 1_000_000_000)
+            self.session.node.get_clock.return_value.now.return_value.nanoseconds = stamp
+            if empty:
+                frame.people = []
+            self.session.on_frame(frame)
+            if clock[0] >= 0.3 + cancel_after:
                 self.session.cancelled.is_set.return_value = True
-                self.sends_at_cancel = self.session.motion.send.call_count
+                self.sends_at_cancel = self.session.motion.send.call_count if motion else 0
 
         self.session.cancelled.wait.side_effect = advance
         blackboard = {}
@@ -236,37 +240,47 @@ class FollowSessionTest(unittest.TestCase):
             outcome = self.session.observe(blackboard)
         return outcome, blackboard, clock[0] - 0.3
 
-    def test_two_minute_timeout_caps_five_minute_duration(self):
-        outcome, board, elapsed = self.run_timed_follow(300.0, 120.0)
-        self.assertEqual(outcome, SUCCEED)
-        self.assertEqual(board["message"], "follow_trial_completed")
-        self.assertGreaterEqual(elapsed, 120.0)
-        self.assertLess(elapsed, 120.051)
-
-    def test_duration_caps_longer_timeout(self):
-        outcome, board, elapsed = self.run_timed_follow(120.0, 300.0)
-        self.assertEqual(outcome, SUCCEED)
-        self.assertEqual(board["message"], "follow_trial_completed")
-        self.assertGreaterEqual(elapsed, 120.0)
-        self.assertLess(elapsed, 120.051)
-
-    def test_five_minutes_are_possible_only_with_matching_timeout(self):
-        outcome, _, elapsed = self.run_timed_follow(300.0, 300.0)
-        self.assertEqual(outcome, SUCCEED)
-        self.assertGreaterEqual(elapsed, 300.0)
-        self.assertLess(elapsed, 300.051)
+    def test_motion_continues_past_old_limits_until_cancelled(self):
+        outcome, board, elapsed = self.run_until_cancel(601.0)
+        self.assertEqual(outcome, ABORT)
+        self.assertEqual(board["message"], "cancelled_or_ros_shutdown")
+        self.assertGreaterEqual(elapsed, 601.0)
+        self.assertLess(elapsed, 601.051)
+        self.assertGreater(self.session.motion.send.call_count, 12000)
         self.assertEqual(self.session.publish_preview.call_args.args[0].vx, 0.0)
 
-    def test_preview_uses_timeout_without_creating_motion(self):
-        outcome, board, elapsed = self.run_timed_follow(2.0, 120.0, motion=False)
-        self.assertEqual(outcome, SUCCEED)
-        self.assertEqual(board["message"], "preview_completed")
-        self.assertGreaterEqual(elapsed, 120.0)
-        self.assertLess(elapsed, 120.051)
+    def test_preview_continues_past_old_limits_without_motion(self):
+        outcome, board, elapsed = self.run_until_cancel(301.0, motion=False)
+        self.assertEqual(outcome, ABORT)
+        self.assertEqual(board["message"], "cancelled_or_ros_shutdown")
+        self.assertGreaterEqual(elapsed, 301.0)
+        self.assertLess(elapsed, 301.051)
         self.assertIsNone(self.session.motion)
 
-    def test_cancel_interrupts_long_trial_before_deadline(self):
-        outcome, board, elapsed = self.run_timed_follow(300.0, 300.0, cancel_after=0.2)
+    def test_fresh_empty_stream_can_wait_for_first_person_indefinitely(self):
+        outcome, board, elapsed = self.run_until_cancel(301.0, empty=True)
+        self.assertEqual(outcome, ABORT)
+        self.assertEqual(board["message"], "cancelled_or_ros_shutdown")
+        self.assertGreaterEqual(elapsed, 301.0)
+        for call in self.session.motion.send.call_args_list:
+            self.assertEqual((call.args[0].vx, call.args[0].wz), (0.0, 0.0))
+            self.assertFalse(call.args[0].locked)
+
+    def test_initial_stream_watchdog_stops_even_if_publisher_exists(self):
+        clock = [10.0]
+        self.session.cancelled.wait.side_effect = lambda seconds: clock.__setitem__(0, clock[0] + seconds)
+        board = {}
+        with patch("follow_session.time.monotonic", side_effect=lambda: clock[0]), \
+                patch("follow_session.rclpy.ok", return_value=True):
+            outcome = self.session.observe(board)
+        self.assertEqual(outcome, ABORT)
+        self.assertEqual(board["message"], "initial_detection_stream_unavailable")
+        self.assertGreaterEqual(clock[0], 15.0)
+        self.assertLess(clock[0], 15.051)
+        self.assertTrue(self.session.finished)
+
+    def test_cancel_interrupts_observation_without_further_motion(self):
+        outcome, board, elapsed = self.run_until_cancel(0.2)
         self.assertEqual(outcome, ABORT)
         self.assertEqual(board["message"], "cancelled_or_ros_shutdown")
         self.assertLess(elapsed, 0.251)
@@ -275,6 +289,50 @@ class FollowSessionTest(unittest.TestCase):
         self.assertEqual(self.session.motion.send.call_count, self.sends_at_cancel)
         final = self.session.publish_preview.call_args.args[0]
         self.assertEqual((final.vx, final.wz), (0.0, 0.0))
+
+    def test_target_loss_still_aborts_without_waiting_for_total_limit(self):
+        self.acquire()
+        clock = [0.3]
+
+        def lose_person(_seconds):
+            clock[0] += 0.05
+            self.session.controller.update([], clock[0])
+
+        self.session.cancelled.wait.side_effect = lose_person
+        board = {}
+        with patch("follow_session.time.monotonic", side_effect=lambda: clock[0]), \
+                patch("follow_session.rclpy.ok", return_value=True):
+            self.assertEqual(self.session.observe(board), ABORT)
+        self.assertEqual(board["message"], "person_missing")
+        self.assertEqual(self.session.publish_preview.call_args.args[0].vx, 0.0)
+
+    def test_stale_stream_still_aborts_before_initial_stream_deadline(self):
+        self.acquire()
+        self.session.latest_stamp = 100_000_000_000
+        clock = [0.3]
+
+        def stall_stream(_seconds):
+            clock[0] += 0.8
+            self.session.node.get_clock.return_value.now.return_value.nanoseconds = 100_800_000_000
+
+        self.session.cancelled.wait.side_effect = stall_stream
+        board = {}
+        with patch("follow_session.time.monotonic", side_effect=lambda: clock[0]), \
+                patch("follow_session.rclpy.ok", return_value=True):
+            self.assertEqual(self.session.observe(board), ABORT)
+        self.assertEqual(board["message"], "stale_or_future_image")
+        self.assertLess(clock[0], 5.0)
+
+    def test_already_cancelled_observation_never_calls_camera_or_motion(self):
+        self.session.cancelled.is_set.return_value = True
+        self.session.camera = MagicMock()
+        self.session.motion = MagicMock()
+        board = {}
+        with patch("follow_session.rclpy.ok", return_value=True):
+            self.assertEqual(self.session.observe(board), ABORT)
+        self.assertEqual(board["message"], "cancelled_or_ros_shutdown")
+        self.session.camera.gate.assert_not_called()
+        self.session.motion.send.assert_not_called()
 
     def test_wrong_camera_frame_permanently_stops(self):
         frame = self.frame()

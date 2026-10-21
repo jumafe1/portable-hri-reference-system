@@ -16,7 +16,9 @@ from std_msgs.msg import String
 from yasmin_ros.basic_outcomes import ABORT, SUCCEED
 
 from follow_controller import Config, Controller, Person
+from follow_camera import FollowCamera
 from follow_motion import FollowMotion
+from follow_speech import FollowSpeech
 
 
 CAPABILITY = "hri_capability_interfaces/DetectPeople"
@@ -45,6 +47,8 @@ class FollowSession:
         self.last_reason = ""
         self.bond = None
         self.motion = None
+        self.camera = None
+        self.speech = None
         # Diagnostics must not stall observation waiting for reliable readers.
         latest = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
         # One explicit node/executor serves perception, services and heartbeat.
@@ -65,8 +69,12 @@ class FollowSession:
             self.release_client = self.node.create_client(
                 FreeCapability, "/capabilities/free_capability"
             )
+            if getattr(args, "transcribe_speech", False):
+                self.speech = FollowSpeech(self)
             if getattr(args, "enable_motion", False):
                 self.motion = FollowMotion(self)
+                if getattr(args, "orient_camera", False):
+                    self.camera = FollowCamera(self)
             self.executor.add_node(self.node)
             self.spin_thread = threading.Thread(
                 target=self.executor.spin, name="follow-ros", daemon=True,
@@ -132,7 +140,9 @@ class FollowSession:
                 center_x=p.center_x, center_y=p.center_y,
                 width=p.width, height=p.height,
             ) for p in frame.people]
-            decision = self.controller.update(people, now)
+            camera = getattr(self, "camera", None)
+            ratio = camera.process_frame(people, stamp) if camera else None
+            decision = self.controller.update(people, now, height_ratio_override=ratio)
             if decision.locked and not self.controller.halted:
                 self.tracked_frames += 1
 
@@ -177,6 +187,11 @@ class FollowSession:
             "source_stamp_ns": self.latest_stamp,
             "receipt_age_s": now - self.latest_received if self.latest_received else None,
             "distance_m": None,
+            "camera_orientation_requested": getattr(self.args, "orient_camera", False),
+            "camera_orientation_active": bool(self.camera and self.camera.active),
+            "camera_status": self.camera.status if self.camera else (
+                "disabled_in_preview" if getattr(self.args, "orient_camera", False) else "disabled"),
+            "camera_elevation_rad": self.camera.feedback.elevation if self.camera and self.camera.feedback else None,
         }
         data = json.dumps(payload, allow_nan=False)
         self.publisher.publish(String(data=data))
@@ -185,8 +200,8 @@ class FollowSession:
             self.node.get_logger().info(data)
             self.last_print, self.last_reason = now, decision.reason
 
-    def _checked_decision(self):
-        """Called with the session lock held, including at the final deadline."""
+    def _checked_decision(self, *, allow_camera_commands=True):
+        """Called with the session lock held; safety checks have no trial expiry."""
         if self.bond.is_broken():
             self.controller.stop("capability_bond_broken")
         elif self.node.count_publishers("/hri/people") != 1:
@@ -195,13 +210,19 @@ class FollowSession:
             age = (self.node.get_clock().now().nanoseconds - self.latest_stamp) / 1e9
             if age > 0.75 or age < -0.1:
                 self.controller.stop("stale_or_future_image")
-        return self.controller.tick(time.monotonic())
+        decision = self.controller.tick(time.monotonic())
+        camera = getattr(self, "camera", None)
+        return camera.gate(decision, allow_commands=allow_camera_commands) if camera else decision
 
     def observe(self, blackboard):
-        duration = min(self.args.timeout, self.args.duration) if self.motion else self.args.timeout
-        deadline = time.monotonic() + duration
-        while rclpy.ok() and not self.cancelled.is_set() and time.monotonic() < deadline:
+        # This is a stream-start watchdog, NOT a person-acquisition/trial limit.
+        # Fresh empty frames may wait indefinitely at zero before first lock.
+        initial_frame_deadline = time.monotonic() + 5.0
+        speech = getattr(self, "speech", None)
+        while rclpy.ok() and not self.cancelled.is_set():
             with self.lock:
+                if not self.latest_stamp and time.monotonic() >= initial_frame_deadline:
+                    self.controller.stop("initial_detection_stream_unavailable")
                 decision = self._checked_decision()
                 if self.motion:
                     error = self.motion.send(decision)
@@ -211,24 +232,20 @@ class FollowSession:
                 if self.controller.halted:
                     self.finished = True
                     blackboard["message"] = decision.reason
+                    if speech:
+                        speech.freeze("stopped_visual_fault")
                     return ABORT
+            if speech:
+                speech.tick()
             self.cancelled.wait(0.05)
+        if speech:
+            speech.freeze("cancelled")
         with self.lock:
-            # A final callback must not turn a newly invalid target into success.
-            decision = self._checked_decision()
-            result = ABORT
-            if self.cancelled.is_set() or not rclpy.ok():
-                blackboard["message"] = "cancelled_or_ros_shutdown"
-            elif self.controller.halted:
-                blackboard["message"] = decision.reason
-            elif not self.tracked_frames:
-                blackboard["message"] = "no_target_acquired"
-            else:
-                blackboard["message"] = "follow_trial_completed" if self.motion else "preview_completed"
-                result = SUCCEED
+            # Cancellation never issues another camera/base movement command.
+            blackboard["message"] = "cancelled_or_ros_shutdown"
             self.finished = True
             self.publish_preview(self.controller.stop(blackboard["message"]))
-            return result
+            return ABORT
 
     def finish_preview(self, reason):
         with self.lock:

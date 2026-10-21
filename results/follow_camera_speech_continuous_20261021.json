@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-21",
+  "scope": "Continuous FollowPerson, optional OrientCamera, standalone TranscribeSpeech",
+  "environment": "Docker ROS 2 Jazzy ARM64; synthetic sensors and actuator subscribers",
+  "software_verification_passed": true,
+  "physical_success_verified": false,
+  "real_whisper_inference_verified": false,
+  "build": {"colcon_packages_passed": 4, "naoqi_ctest_passed": 2, "whisper_ctest_passed": 1},
+  "unit_tests": {"follow": 145, "camera_geometry": 11, "transcribe_app": 11, "transcription_core": 17},
+  "integration": {
+    "follow_camera": {"passed": 7, "total": 7, "container_report": "/tmp/portable-hri-follow-camera-probe-xgxz6fjr/result.json"},
+    "follow_motion": {"passed": 28, "total": 28, "container_report": "/tmp/portable-hri-follow-motion-probe-nb_nea56/result.json"},
+    "follow_preview": {"passed": 20, "total": 20, "container_report": "/tmp/portable-hri-follow-preview-probe-8jzk6www/result.json"},
+    "speech_proxy": {"passed": 8, "total": 8, "probe": "hri_whisper_providers/test/probe_whisper_proxy.py"},
+    "speech_app": {"passed": 4, "total": 4, "probe": "hri_whisper_providers/test/probe_transcribe_app.py"},
+    "speech_probe_isolation_rejections": {"passed": 10, "total": 10}
+  },
+  "continuous_follow": {
+    "total_duration_limit": null,
+    "minimum_confidence_default": 0.65,
+    "initial_stream_watchdog_seconds": 5.0,
+    "fake_clock_motion_seconds_before_cancel": 601,
+    "fake_clock_preview_seconds_before_cancel": 301,
+    "cancel_message": "cancelled_or_ros_shutdown",
+    "cancel_outcome": "application_failed",
+    "safety_deadlines_preserved": true
+  },
+  "preserved_failed_run": {
+    "container_report": "/tmp/portable-hri-follow-preview-probe-vm2gfvpp/result.json",
+    "reason": "Obsolete harness expected pre-acquisition ambiguity to expire. Updated test to observe continued zero commands then cancel; production unchanged; full preview rerun passed."
+  },
+  "limitations": [
+    "No physical robot or microphone tested; zero received by a fake backend is not proof of actuator stopping.",
+    "Whisper, local model weights and audio_common_msgs are unavailable in this Docker environment; real ASR and simultaneous YOLO performance remain unverified.",
+    "Camera geometry assumes approximately pure pitch rotation, not metric distance or collision clearance.",
+    "No static Python type checker or ESLint configured. C++ compiled; Python compileall checks syntax only.",
+    "Container reports are temporary artifacts; this file is a compact summary, not a copy of all traces.",
+    "No commit or push performed. Historical physical results preserved."
+  ]
+}

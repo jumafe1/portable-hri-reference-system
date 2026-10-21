@@ -1,8 +1,8 @@
-# Seguimiento visual: preview y seguimiento supervisado acotado
+# Seguimiento visual continuo: preview y seguimiento supervisado
 
-`hri_app` incorpora el modo YASMIN `follow_person` como **previsualización por defecto**. Adquiere `DetectPeople` mediante Capabilities2 y `YoloDetectPeople`, procesa `/hri/people` y publica diagnóstico en `/hri/follow_person/preview` (`std_msgs/msg/String`, JSON). Con activación explícita puede adquirir además `MoveVelocity` y enviar las decisiones a `NaoqiMoveVelocity`. No se añade otro proveedor.
+`hri_app` incorpora el modo YASMIN `follow_person` como **previsualización por defecto**. Adquiere `DetectPeople` mediante Capabilities2 y `YoloDetectPeople`, procesa `/hri/people` y publica diagnóstico en `/hri/follow_person/preview` (`std_msgs/msg/String`, JSON). Con activación explícita puede adquirir además `MoveVelocity` y enviar las decisiones a `NaoqiMoveVelocity`. Puede añadir `OrientCamera` y `TranscribeSpeech` opcionales bajo el mismo vínculo. Su preparación se describe en [CAMERA_AND_SPEECH.md](CAMERA_AND_SPEECH.md); los comandos básicos de esta guía conservan cámara fija y escucha desactivada.
 
-**Sin `enable_motion:=true`, no se adquiere MoveVelocity ni se crea un publicador Twist.** La activación requiere además `confirm:=MOVER`; el intervalo de generación de comandos se acota a `duration` (0.1–300 s, predeterminado 2 s) y a `timeout` (1–300 s, predeterminado 120 s), el menor de ambos. No se modifica la vida autónoma. El autor confirmó seguimiento físico en NAO con la configuración anterior de velocidad; una configuración más rápida requiere su propia validación supervisada. Las pruebas software no la sustituyen. El modo independiente `move_velocity` conserva su límite de 5 s.
+**Sin `enable_motion:=true`, no se adquiere MoveVelocity ni se crea un publicador Twist.** La activación requiere además `confirm:=MOVER`. Desde este incremento, preview y seguimiento son continuos: no aceptan `timeout` ni `duration`; terminan por Ctrl+C o fallo. Se conservan los límites de datos frescos, confianza y salud de proveedores. No se modifica la vida autónoma. El autor confirmó seguimiento físico en NAO con la versión anterior; las pruebas software no sustituyen la validación física de este incremento. El modo independiente `move_velocity` conserva su límite de 5 s.
 
 ## Arquitectura de esta etapa
 
@@ -27,6 +27,44 @@ El modo usa un nodo ROS y un ejecutor de un solo hilo propios dentro del
 proceso de `hri_app`, compartidos por percepción, servicios y heartbeat.
 YASMIN recibe este nodo mediante `ServiceState(node=...)` y
 `set_ros_loggers(node)`. No requiere otra terminal ni modifica YASMIN.
+
+### Transcripción opcional durante el seguimiento
+
+El diagrama anterior muestra el recorrido visual/base. Para añadir voz, iniciar
+el worker Whisper externo con un modelo local configurado y añadir al mismo
+launch de FollowPerson:
+
+```text
+transcribe_speech:=true confirm_listen:=ESCUCHAR
+```
+
+La aplicación adquiere `TranscribeSpeech` y usa español por defecto. Repite
+captura → procesamiento → nueva captura mientras FollowPerson esté activo,
+salvo que falle la capacidad de voz; al terminar el seguimiento termina también
+la transcripción. Las ventanas de **3 s son internas**: acotan el audio de cada
+solicitud, no la duración de la sesión. No pasar `record_duration` a FollowPerson;
+ese argumento se conserva solo para la prueba independiente de una ventana.
+`speech_language` es opcional para cambiar de idioma, innecesario para español.
+Hay intervalos sin grabación mientras se procesa, no escucha ininterrumpida.
+No requiere otra aplicación HRI ni usa el modo independiente de transcripción
+al mismo tiempo. El proveedor predeterminado es
+`hri_whisper_providers/WhisperTranscribeSpeech`.
+
+En otra terminal, `ros2 topic echo /hri/speech/transcript --field text` muestra
+los resultados después de procesar cada ventana. El diagnóstico sin texto está
+en `/hri/follow_person/speech_status`. `print_transcript:=true` imprime también
+en la terminal de la aplicación y puede conservar el contenido en logs; por
+defecto está desactivado. No se guardan archivos de audio ni texto por defecto,
+pero otros consumidores del grafo pueden recibir y grabar esos tópicos.
+
+La escucha requiere autorización separada del movimiento y funciona también en
+preview: `dry_run: true` no significa ausencia de captura si se autorizó escuchar.
+Un fallo de voz deshabilita e intenta liberar solo esa capacidad; la percepción
+y el movimiento conservan sus paradas. Al terminar el seguimiento, Ctrl+C o un
+fallo de visión/movimiento, se solicita primero cero a la base y se libera también
+la escucha. No genera respuestas ni activa `Speak` automáticamente. La captura
+real, el modelo y el rendimiento de Whisper junto con YOLO siguen pendientes de
+validación en el laboratorio.
 
 ## Qué significa la sugerencia
 
@@ -115,10 +153,10 @@ ros2 topic echo /yolo/detections --once --field header
 Comprobar que YOLO se suscribe a `/nao/camera/front/image_raw` y que el `frame_id` corresponde a esa fuente. Reemplazar `ANCHO_REAL`, `ALTO_REAL` y `FRAME_REAL` por las lecturas antes de ejecutar esta plantilla:
 
 ```bash
-ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=ANCHO_REAL image_height:=ALTO_REAL expected_frame:=FRAME_REAL minimum_confidence:=0.65 target_height_ratio:=0.60 timeout:=20.0
+ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=ANCHO_REAL image_height:=ALTO_REAL expected_frame:=FRAME_REAL minimum_confidence:=0.65 target_height_ratio:=0.60
 ```
 
-El tiempo de observación admite entre 1 y 300 segundos, con 120 s por defecto; preparación y limpieza añaden tiempo a la ejecución completa. Para una instancia YOLO con un tópico diferente, agregar `detections_topic:=/ruta/correcta/detections`; no basta con cambiar `robot`.
+La observación continúa hasta Ctrl+C o fallo, sin vencimiento total. Antes de adquirir una persona, detecciones vacías pero frescas mantienen cero y permiten esperar; si no llega ningún frame inicial en cinco segundos se informa fallo de comunicación. Tras adquirirla, pérdida o confianza insuficiente detienen el comportamiento. Para una instancia YOLO con un tópico diferente, agregar `detections_topic:=/ruta/correcta/detections`; no basta con cambiar `robot`.
 
 ### Terminal 4: observar sin actuar
 
@@ -140,7 +178,7 @@ En el visor de imágenes seleccionar `/yolo/dbg_image`. Los rectángulos los dib
 
 Primero permanecer visible como única persona, con el cuerpo dentro del encuadre y la cabeza del robot mirando al frente. Desplazarse lentamente hacia la izquierda/derecha de la imagen: se esperan propuestas `wz_rad_s` positivas/negativas, respectivamente. Muy descentrado no propone avanzar; centrado y con caja de menos del 55 % de altura puede proponer avance. Caja grande descentrada puede dar `preview_centering_close`, sin avance. Esto no autoriza un giro físico cerca de personas.
 
-Después comprobar por separado pérdida de objetivo y entrada de otra persona. Cada fallo que queda bloqueado requiere una nueva ejecución. Guardar el JSON final y la observación: `application_succeeded` acredita únicamente la previsualización, con `dry_run: true`, `motion_enabled: false` y `physical_success_verified: false`. El cambio no elimina los cortes por antigüedad de imagen: deben diagnosticarse si se repiten, no ocultarse aumentando el límite.
+Después comprobar por separado pérdida de objetivo y entrada de otra persona. Cada fallo que queda bloqueado requiere una nueva ejecución. Guardar el JSON final y la observación. Ctrl+C conserva la semántica de cancelación: puede informar `application_failed`, `cancelled_or_ros_shutdown` y `released: true`; no confundir la etiqueta con un fallo de liberación. En preview se mantienen `dry_run: true`, `motion_enabled: false` y `physical_success_verified: false`. El cambio no elimina los cortes por antigüedad de imagen: deben diagnosticarse, no ocultarse aumentando el límite.
 
 ## Verificaciones de software
 
@@ -166,11 +204,11 @@ sin crear un grafo ROS ni conectarse al robot.
 
 Antes de ejecutar: una sola persona, suelo plano previamente despejado, sin escaleras ni obstáculos, cabeza estable mirando al frente y cámara alineada con la base. Un supervisor debe poder utilizar la parada física independiente. No ejecutar teleoperación, otras aplicaciones de movimiento, otro servidor Capabilities2 ni otra instancia de YOLO sobre el mismo tópico. No interpretar el caminar de la persona como garantía de camino seguro.
 
-Después de disponer de los cambios y recompilar, con driver y YOLO correctos activos, el primer ensayo de **dos segundos** usa las dimensiones y frame ya comprobados en NAO:
+Después de disponer de los cambios y recompilar, con driver y YOLO correctos activos, iniciar un ensayo breve y terminarlo manualmente con **Ctrl+C**. Estas son las dimensiones y frame ya comprobados en NAO:
 
 ```bash
 cd ~/Documents/portable_hri_ws
-ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=320 image_height:=240 expected_frame:=CameraTop_optical_frame enable_motion:=true confirm:=MOVER duration:=2.0 timeout:=20.0
+ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=320 image_height:=240 expected_frame:=CameraTop_optical_frame enable_motion:=true confirm:=MOVER
 ```
 
 Permanecer visible y centrado antes de iniciar. Empezar quieto; no caminar hasta comprobar el sentido de respuesta. Probar avance y giro en ensayos separados. Una persona demasiado cerca o una caja recortada pueden producir solo ceros; no acercarse al robot para forzar el giro. Ante fallo, revisar y reiniciar manualmente: no se reanuda automáticamente tras perder el objetivo.
@@ -180,28 +218,24 @@ Permanecer visible y centrado antes de iniciar. Empezar quieto; no caminar hasta
 Para revisar primero las propuestas con máximo de **0.10 m/s**, sin movimiento:
 
 ```bash
-ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=320 image_height:=240 expected_frame:=CameraTop_optical_frame max_forward_speed:=0.1 timeout:=20.0
+ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=320 image_height:=240 expected_frame:=CameraTop_optical_frame max_forward_speed:=0.1
 ```
 
-Con fuente, sentido de respuesta y paradas comprobados, el siguiente comando habilita un ensayo supervisado corto de dos segundos con ese máximo:
+Con fuente, sentido de respuesta y paradas comprobados, el siguiente comando habilita seguimiento supervisado con ese máximo; finalizar el ensayo con Ctrl+C:
 
 ```bash
-ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=320 image_height:=240 expected_frame:=CameraTop_optical_frame max_forward_speed:=0.1 enable_motion:=true confirm:=MOVER duration:=2.0 timeout:=20.0
+ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=320 image_height:=240 expected_frame:=CameraTop_optical_frame max_forward_speed:=0.1 enable_motion:=true confirm:=MOVER
 ```
 
 La nueva configuración de 0.10 m/s no está validada físicamente por la corrida anterior. Es posible usar `max_forward_speed:=0.05` como incremento intermedio. No iniciar una sesión larga por el solo hecho de aceptar el parámetro: comprobar primero movimiento y parada con supervisión. La rampa del proveedor puede impedir alcanzar el máximo en un ensayo corto. Los límites de giro, pérdida de persona, antigüedad de imagen, watchdog y cancelación no cambian. Una mayor velocidad puede aumentar el recorrido antes de detenerse; el tamaño visual objetivo no equivale a una distancia de seguridad en metros.
 
-Para la configuración solicitada de duración máxima de cinco minutos y timeout de dos minutos:
+### Ejecución continua
 
-```bash
-ros2 launch hri_reference_app hri_app.launch.py robot:=nao mode:=follow_person image_width:=320 image_height:=240 expected_frame:=CameraTop_optical_frame enable_motion:=true confirm:=MOVER duration:=300.0 timeout:=120.0
-```
+FollowPerson ya no acepta `duration` ni `timeout`: retirarlos de comandos antiguos. Tanto preview como movimiento continúan hasta Ctrl+C o un fallo. Los plazos breves de comunicación, antigüedad de imagen y watchdog permanecen activos; no son límites de duración del comportamiento. La ejecución continua no acredita seguridad frente a obstáculos ni funcionamiento sin supervisión.
 
-Este comando genera órdenes durante **como máximo 120 s**, no 300: aplica `min(duration, timeout)`. Para permitir cinco minutos completos, ambos deben valer `300.0`. `timeout` no es el tiempo que tolera sin ver a la persona: pérdida de objetivo, antigüedad de imagen y watchdog mantienen sus límites breves. Ampliar la duración no acredita estabilidad durante cinco minutos ni seguridad frente a obstáculos.
+YASMIN adquiere DetectPeople y MoveVelocity, verifica proveedores, observa y transmite a unos 20 Hz. Al terminar o fallar, solicita cero durante 0.4 s, comprueba estado `stopped` y libera las capacidades. `Ctrl+C` solicita cancelación. En el flujo básico sin cámara ni voz, un supervisor mantiene Capabilities2 disponible durante un margen máximo de 8 s para esa limpieza; al salir la aplicación solicita el cierre inmediato del servidor. Con `orient_camera` o `transcribe_speech` habilitados, se reservan 30 s para la aplicación y 32 s para el supervisor, con escalado del servidor a SIGTERM a los 34 s; también aplica a preview con voz. Estos márgenes no son plazos de frenado físico. El cierre del servidor escala de SIGINT a SIGTERM y SIGKILL con esperas acotadas si no responde. La caída de red/proveedor o una terminación forzada puede impedir la entrega de parada: **Ctrl+C no reemplaza una parada física**.
 
-YASMIN adquiere DetectPeople y MoveVelocity, verifica proveedores, observa y transmite a unos 20 Hz. Al terminar o fallar, solicita cero durante 0.4 s, comprueba estado `stopped`, libera MoveVelocity y después DetectPeople. `Ctrl+C` solicita cancelación. En follow_person, un supervisor mantiene Capabilities2 disponible durante un margen máximo de 8 s para esa limpieza; al salir la aplicación solicita el cierre inmediato del servidor. El cierre del servidor escala de SIGINT a SIGTERM y SIGKILL con esperas acotadas si no responde. La caída de red/proveedor o una terminación forzada puede impedir la entrega de parada: **Ctrl+C no reemplaza una parada física**.
-
-Resultados: `people_released` y `motion_released` informan liberación; `released` requiere ambas. `stop_acknowledged` solo confirma estado software del proveedor. `application_succeeded` significa ensayo acotado completado, incluso si todas las órdenes fueron cero. Una cancelación puede terminar como `application_failed` con mensaje `cancelled_or_ros_shutdown` y liberación correcta. `physical_success_verified` sigue en `false`: registrar por separado si NAO efectivamente siguió y se detuvo. El plazo configurado limita la generación de órdenes, no garantiza detener motores en ese plazo.
+Resultados: `people_released` y `motion_released` informan liberación; `released` requiere liberar todas las capacidades adquiridas, incluidas cámara y voz cuando se habilitan. `stop_acknowledged` solo confirma estado software del proveedor. El cierre por Ctrl+C termina como `application_failed` con mensaje `cancelled_or_ros_shutdown`: es la clasificación actual de cancelación, no implica que falló la limpieza. Comprobar los campos de parada/liberación. Ya no existe finalización exitosa por vencer el tiempo. `physical_success_verified` sigue en `false`: registrar por separado si NAO efectivamente siguió y se detuvo.
 
 El proveedor conserva watchdog de comandos de 0.3 s y comprueba publicadores únicos, estabilidad del grafo durante 0.5 s y continuidad del GID de origen. Conflictos quedan bloqueados hasta liberar y readquirir. El descubrimiento DDS es asíncrono: no equivale a exclusión distribuida instantánea ni autenticación; otro publicador directo al driver aún podría ordenar movimiento. La caída total del proveedor o de la red no queda cubierta por su watchdog local.
 
@@ -212,6 +246,8 @@ ROS_LOCALHOST_ONLY=1 ROS_DOMAIN_ID=182 python3 tests/unified_hri_follow_motion_p
 ```
 
 ## Evidencia y límites
+
+Los resultados siguientes corresponden a versiones anteriores acotadas por tiempo. Se conservan como evidencia histórica; sus argumentos temporales no son comandos vigentes para FollowPerson continuo.
 
 El máximo configurable de avance pasó **117/117 unitarias y 26/26 comprobaciones ROS con interfaces simuladas**, incluida saturación a 0.05/0.10 m/s, preview sin actuación y cancelación del grupo de procesos con máximo 0.10. Compilación colcon y sintaxis Python aprobaron; no hay type-checker estático ni ESLint configurados. La respuesta predeterminada coincide exactamente con la versión anterior en 2139 geometrías sintéticas. [Informe compacto generado](results/follow_person_speed_20261019.json); las trazas completas permanecen en la carpeta temporal del contenedor indicada en él. Esto no valida físicamente la nueva velocidad.
 

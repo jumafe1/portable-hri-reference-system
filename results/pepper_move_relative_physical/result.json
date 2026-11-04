@@ -1,0 +1,24 @@
+{
+  "started_utc": "2026-09-22T21:11:48.025338+00:00",
+  "robot": "Pepper",
+  "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+  "move_service": "/pepper/move_to",
+  "odometry_topic": "/pepper/odom",
+  "request": {
+    "x_m": 0.1,
+    "y_m": 0.0,
+    "theta_rad": 0.0
+  },
+  "technical_success": true,
+  "observer_confirmation": true,
+  "released": true,
+  "response": {
+    "success": true,
+    "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+    "message": "motion_completed",
+    "achieved_x_m": 0.1043473693045894,
+    "achieved_y_m": -0.0011129974069063985,
+    "achieved_theta_rad": -0.004335388541221563
+  },
+  "passed": true
+}

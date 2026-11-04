@@ -1,0 +1,17 @@
+{
+  "started_utc": "2026-09-17T22:47:42.290001+00:00",
+  "text": "Hola, esta es una prueba de Capabilities2 en Pepper.",
+  "language": "Spanish",
+  "robot": "Pepper",
+  "backend_service": "/pepper/say",
+  "provider": "hri_naoqi_providers/NaoSpeak",
+  "uses_backend_remapping": true,
+  "technical_success": true,
+  "audible_confirmation": true,
+  "response": {
+    "success": true,
+    "provider": "hri_naoqi_providers/NaoSpeak",
+    "message": "Synchronous say command finished."
+  },
+  "passed": true
+}

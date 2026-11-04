@@ -307,13 +307,19 @@ def main():
             try:
                 arguments = [f"robot:={robot}", f"detections_topic:={topic}"]
                 awaiting_target = name in ("empty", "ambiguous")
-                controlled_stop = success or awaiting_target or name == "interrupt"
+                controlled_stop = success or awaiting_target or name in (
+                    "interrupt", "late_loss", "no_stream", "stale_stamp")
                 # Harness deadlines bound this test, not the application's life.
                 # Fresh frames without one unique person remain safely waiting
-                # beyond the separate 5s initial-no-stream watchdog.
+                # including when a running publisher has no initial images.
                 minimum_samples = 120 if awaiting_target else 60
                 until = (lambda: len(fixture.snapshot(start)[0]) >= minimum_samples) if (
                     success or awaiting_target) else None
+                if name == "late_loss":
+                    until = lambda: sum(p.get("reason") == "person_missing"
+                                        for p in fixture.snapshot(start)[0]) >= 120
+                elif name in ("no_stream", "stale_stamp"):
+                    until = lambda: len(fixture.snapshot(start)[0]) >= 120
                 code, output = launch(arguments, evidence / f"{name}.log", fixture,
                                       interrupt=controlled_stop, until=until)
                 result = parse_result(output)
@@ -341,6 +347,11 @@ def main():
                                       for p in previews))
                 if name in ("late_loss", "duplicate_stamp"):
                     passed = passed and any(p.get("locked") is True for p in previews)
+                if name == "late_loss":
+                    waiting = [p for p in previews if p.get("reason") == "person_missing"]
+                    passed = passed and len(waiting) >= 120 and all(preview_is_zero(p) for p in waiting)
+                if name in ("no_stream", "stale_stamp"):
+                    passed = passed and len(previews) >= 120 and all(preview_is_zero(p) for p in previews)
                 if name == "single_person_changes":
                     close = [p for p in previews if p.get("reason") == "preview_centering_close"]
                     passed = (passed

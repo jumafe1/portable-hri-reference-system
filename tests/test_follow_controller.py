@@ -4,6 +4,7 @@ from dataclasses import replace
 import importlib.util
 from pathlib import Path
 import sys
+import struct
 import unittest
 
 
@@ -20,7 +21,7 @@ Person = MODULE.Person
 
 class FollowControllerTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.controller = Controller(Config(640, 480))
+        self.controller = Controller(Config(640, 480, target_height_ratio=0.6, max_forward_speed=0.03))
         self.person = Person(0.9, "person-1", 320.0, 240.0, 100.0, 120.0)
 
     def acquire(self, person=None):
@@ -45,11 +46,28 @@ class FollowControllerTest(unittest.TestCase):
         self.assertEqual(decision.vx, 0.03)
         self.assertEqual(decision.wz, 0.0)
 
+    def test_default_target_075_preserves_forward_deadband_and_close_stop(self) -> None:
+        for height, reason in ((160.0, 'preview_following'),
+                               (180.0, 'target_in_visual_deadband'),
+                               (200.0, 'target_too_close_visual')):
+            with self.subTest(height=height):
+                controller = Controller(Config(320, 240))
+                self.assertEqual(controller.config.target_height_ratio, 0.75)
+                person = Person(0.9, '', 160.0, 120.0, 80.0, height)
+                for now in (0.0, 0.1, 0.2):
+                    decision = controller.update([person], now)
+                self.assertEqual(decision.reason, reason)
+                if height == 160.0:
+                    self.assertGreater(decision.vx, 0.0)
+                    self.assertLessEqual(decision.vx, 0.1)
+                else:
+                    self.assert_zero(decision)
+
     def test_configured_speed_scales_gain_and_saturates_at_its_limit(self) -> None:
         for maximum in (0.01, 0.03, 0.05, 0.10):
             for height, expected in ((240.0, maximum / 3.0), (120.0, maximum)):
                 with self.subTest(maximum=maximum, height=height):
-                    self.controller = Controller(Config(640, 480, max_forward_speed=maximum))
+                    self.controller = Controller(Config(640, 480, target_height_ratio=0.6, max_forward_speed=maximum))
                     decision = self.acquire(replace(self.person, height=height))
                     self.assertAlmostEqual(decision.vx, expected)
                     self.assertEqual(decision.wz, 0.0)
@@ -63,28 +81,29 @@ class FollowControllerTest(unittest.TestCase):
             ({"center_x": 50.0}, 0.0, 0.0),
         ):
             with self.subTest(changes=changes):
-                self.controller = Controller(Config(640, 480, max_forward_speed=0.1))
+                self.controller = Controller(Config(640, 480, target_height_ratio=0.6, max_forward_speed=0.1))
                 decision = self.acquire(replace(self.person, **changes))
                 self.assertEqual(decision.vx, expected_vx)
                 self.assertAlmostEqual(decision.wz, expected_wz)
 
-    def test_higher_speed_still_latches_person_loss_and_stale_input(self) -> None:
+    def test_higher_speed_still_stops_on_person_loss_and_stale_input(self) -> None:
         for failure in ("person_missing", "stale_detection"):
             with self.subTest(failure=failure):
-                self.controller = Controller(Config(640, 480, max_forward_speed=0.1))
+                self.controller = Controller(Config(640, 480, target_height_ratio=0.6, max_forward_speed=0.1))
                 self.assertEqual(self.acquire().vx, 0.1)
                 decision = (self.controller.update([], 0.3) if failure == "person_missing"
                             else self.controller.tick(1.0))
                 self.assert_zero(decision)
                 self.assertEqual(decision.reason, failure)
+                self.assertEqual(self.controller.halted, failure == "stale_detection")
                 self.assert_zero(self.controller.update([self.person], 1.1))
 
     def test_speed_configuration_rejects_invalid_values(self) -> None:
-        self.assertEqual(Config(640, 480).max_forward_speed, 0.03)
+        self.assertEqual(Config(640, 480, target_height_ratio=0.6).max_forward_speed, 0.10)
         for maximum in (0, -0.1, 0.10001, float("nan"), float("inf"),
                         -float("inf"), True, False, "0.1", None):
             with self.subTest(maximum=maximum), self.assertRaises(ValueError):
-                Config(640, 480, max_forward_speed=maximum)
+                Config(640, 480, target_height_ratio=0.6, max_forward_speed=maximum)
 
     def test_right_turn_sign_and_saturation(self) -> None:
         decision = self.acquire(replace(self.person, center_x=540.0))
@@ -140,16 +159,51 @@ class FollowControllerTest(unittest.TestCase):
         self.assertEqual(decision.reason, "invalid_detection")
         self.assert_zero(decision)
 
-    def test_missing_after_lock_latches(self) -> None:
+    def test_float32_border_roundtrip_stops_without_latching(self) -> None:
+        f32 = lambda value: struct.unpack('f', struct.pack('f', value))[0]
+        top, bottom = f32(16.01), f32(240.0)
+        center = f32(f32(top + bottom) / 2)
+        height = f32(bottom - top)
+        self.assertGreater(center + height / 2, 240.0)
+        self.controller = Controller(Config(320, 240, target_height_ratio=0.6))
+        self.person = Person(0.9, '', 160.0, 120.0, 100.0, 100.0)
+        self.acquire()
+        decision = self.controller.update([replace(self.person, center_y=center, height=height)], 0.3)
+        self.assertEqual(decision.reason, 'clipped_detection')
+        self.assert_zero(decision)
+        self.assertFalse(self.controller.halted)
+        self.assertGreater(self.controller.update([self.person], 0.4).vx, 0)
+
+    def test_roundoff_on_all_edges_is_clipped_but_real_overflow_latches(self) -> None:
+        for offset in (-0.00001, 0.00001, 0.01):
+            for changes in ({'center_x': 50.0 - offset},
+                            {'center_x': 590.0 + offset},
+                            {'center_y': 60.0 - offset},
+                            {'center_y': 420.0 + offset}):
+                with self.subTest(offset=offset, changes=changes):
+                    self.controller = Controller(Config(640, 480, target_height_ratio=0.6))
+                    self.acquire()
+                    decision = self.controller.update([replace(self.person, **changes)], 0.3)
+                    self.assert_zero(decision)
+                    self.assertEqual(decision.reason, 'invalid_detection' if offset == 0.01 else 'clipped_detection')
+                    self.assertEqual(self.controller.halted, offset == 0.01)
+
+    def test_missing_after_lock_requires_three_new_observations(self) -> None:
         self.acquire()
         self.assertEqual(self.controller.update([], 0.3).reason, "person_missing")
         self.assert_zero(self.controller.update([self.person], 0.4))
+        self.assertFalse(self.controller.halted)
+        self.assert_zero(self.controller.update([self.person], 0.5))
+        self.assertGreater(self.controller.update([self.person], 0.6).vx, 0)
 
-    def test_ambiguity_after_lock_latches(self) -> None:
+    def test_ambiguity_after_lock_requires_three_new_observations(self) -> None:
         self.acquire()
         decision = self.controller.update([self.person, self.person], 0.3)
         self.assertEqual(decision.reason, "ambiguous_people")
         self.assert_zero(self.controller.update([self.person], 0.4))
+        self.assertFalse(self.controller.halted)
+        self.assert_zero(self.controller.update([self.person], 0.5))
+        self.assertGreater(self.controller.update([self.person], 0.6).vx, 0)
 
     def test_id_change_does_not_interrupt_single_person(self) -> None:
         self.acquire()
@@ -195,7 +249,7 @@ class FollowControllerTest(unittest.TestCase):
         self.assertTrue(self.controller.update([replace(other, height=240.0)], 0.2).locked)
 
     def test_observed_nao_width_jump_is_not_identity_failure(self) -> None:
-        self.controller = Controller(Config(320, 240))
+        self.controller = Controller(Config(320, 240, target_height_ratio=0.6))
         narrow = Person(0.84, "", 20.65, 110.98, 41.28, 218.41)
         wide = Person(0.90, "", 38.50, 111.36, 77.0, 219.45)
         self.acquire(narrow)
@@ -209,14 +263,15 @@ class FollowControllerTest(unittest.TestCase):
         self.assertEqual((decision.vx, decision.wz), (0.0, 0.10))
         self.assertEqual(decision.reason, "preview_centering_close")
 
-    def test_missing_after_geometry_and_id_changes_still_latches(self) -> None:
+    def test_missing_after_geometry_and_id_changes_restarts_acquisition(self) -> None:
         self.acquire()
         self.controller.update([replace(self.person, tracking_id="other", center_x=450.0,
                                         height=240.0)], 0.3)
         self.assertEqual(self.controller.update([], 0.4).reason, "person_missing")
         decision = self.controller.update([self.person], 0.5)
         self.assert_zero(decision)
-        self.assertEqual(decision.reason, "person_missing")
+        self.assertEqual(decision.reason, "acquiring_target")
+        self.assertFalse(self.controller.halted)
 
     def test_missing_prelock_resets_count(self) -> None:
         self.controller.update([self.person], 0.0)
@@ -242,7 +297,7 @@ class FollowControllerTest(unittest.TestCase):
         for field, value in (("confidence", float("nan")), ("center_x", float("inf")),
                              ("width", 0.0), ("height", -1.0), ("confidence", 1.1)):
             with self.subTest(field=field, value=value):
-                controller = Controller(Config(640, 480))
+                controller = Controller(Config(640, 480, target_height_ratio=0.6))
                 self.assert_zero(controller.update([replace(self.person, **{field: value})], 0.0))
 
     def test_invalid_after_lock_latches(self) -> None:

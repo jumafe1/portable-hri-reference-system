@@ -158,6 +158,9 @@ def launch_case(case, path, fixture, speech):
                     return len(fixture.snapshot(fixture.case_start)[0]) >= 50
                 if case == "pending_cancel":
                     return bool(requests) and time.monotonic() - requests[0][0] > .25
+                if case == "visual_loss":
+                    return sum(p.get("reason") == "person_missing"
+                               for p in fixture.snapshot(fixture.case_start)[0]) >= 30
                 if case in ("reject", "absent", "stale"):
                     released = [stamp for stamp, owner in leases if not owner]
                     return bool(released) and time.monotonic() - released[0] > 1.0
@@ -189,9 +192,8 @@ def inspect_case(case, fixture, speech, head, output, interrupted, loss_at=None)
         capture_settings = list(speech.capture_settings)
     commands = fixture.recorders["/nao/cmd_vel"].since(fixture.case_start)
     checks = {
-        "expected_termination": (result.get("message") == "person_missing" and interrupted is None
-                                 if case == "visual_loss" else
-                                 interrupted is not None and result.get("message") == "cancelled_or_ros_shutdown"),
+        "expected_termination": (interrupted is not None
+                                 and result.get("message") == "cancelled_or_ros_shutdown"),
         "released": result.get("released") is True,
         "not_physical_proof": result.get("physical_success_verified") is False,
         "bounded_commands": bounded(commands),
@@ -216,6 +218,9 @@ def inspect_case(case, fixture, speech, head, output, interrupted, loss_at=None)
         checks["voice_released"] = (bool(leases) and leases[-1][1] == ""
                                     and result.get("speech_released") is True)
     if case == "visual_loss":
+        waiting = [p for p in fixture.snapshot(fixture.case_start)[0] if p.get("reason") == "person_missing"]
+        checks["waited_at_zero_until_cancel"] = (len(waiting) >= 30
+            and all(p.get("vx_m_s") == 0 and p.get("wz_rad_s") == 0 for p in waiting))
         checks["capture_was_pending"] = len(requests) == 1 and loss_at is not None
         checks["late_result_ignored"] = (speech.late_emitted and not results
                                          and result.get("transcripts_received") == 0)

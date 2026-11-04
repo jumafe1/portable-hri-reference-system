@@ -1,0 +1,1928 @@
+{
+  "topics": {
+    "camera": "/nao/camera/front/image_raw",
+    "yolo": "/yolo/detections",
+    "people": "/hri/people"
+  },
+  "observation_only": true,
+  "cancelled": false,
+  "limits": [
+    "Best-effort observer may miss messages.",
+    "No /hri/people messages are expected without active DetectPeople.",
+    "At most 5000 timestamp samples retained per topic; no image/audio content."
+  ],
+  "max_observer_spin_gap_s": 0.06226887100001477,
+  "summary": {
+    "camera": {
+      "samples": 189,
+      "max_receipt_gap_s": 0.5706049760001406,
+      "since_last_receipt_s": 0.5072441530001015,
+      "source_age_min_s": 0.001682127,
+      "source_age_max_s": 0.00872896
+    },
+    "yolo": {
+      "samples": 186,
+      "max_receipt_gap_s": 0.49723295900002995,
+      "since_last_receipt_s": 0.3155167180002536,
+      "source_age_min_s": 0.102503696,
+      "source_age_max_s": 0.248338902
+    },
+    "people": {
+      "samples": 0
+    }
+  },
+  "samples": {
+    "camera": [
+      {
+        "receipt_monotonic_s": 3021.075207413,
+        "stamp_ns": 1793824691317370624,
+        "source_age_s": 0.008464987
+      },
+      {
+        "receipt_monotonic_s": 3021.144135356,
+        "stamp_ns": 1793824691391914116,
+        "source_age_s": 0.002848587
+      },
+      {
+        "receipt_monotonic_s": 3021.207906489,
+        "stamp_ns": 1793824691453768151,
+        "source_age_s": 0.004762189
+      },
+      {
+        "receipt_monotonic_s": 3021.530717108,
+        "stamp_ns": 1793824691776591242,
+        "source_age_s": 0.004749399
+      },
+      {
+        "receipt_monotonic_s": 3021.610444241,
+        "stamp_ns": 1793824691857689863,
+        "source_age_s": 0.003379517
+      },
+      {
+        "receipt_monotonic_s": 3021.662585218,
+        "stamp_ns": 1793824691910256968,
+        "source_age_s": 0.002954797
+      },
+      {
+        "receipt_monotonic_s": 3021.934507266,
+        "stamp_ns": 1793824692179516854,
+        "source_age_s": 0.005615773
+      },
+      {
+        "receipt_monotonic_s": 3022.007214842,
+        "stamp_ns": 1793824692254828955,
+        "source_age_s": 0.003010629
+      },
+      {
+        "receipt_monotonic_s": 3022.068340375,
+        "stamp_ns": 1793824692316990166,
+        "source_age_s": 0.001977439
+      },
+      {
+        "receipt_monotonic_s": 3022.400261411,
+        "stamp_ns": 1793824692647229901,
+        "source_age_s": 0.003657843
+      },
+      {
+        "receipt_monotonic_s": 3022.474984311,
+        "stamp_ns": 1793824692723695086,
+        "source_age_s": 0.001944623
+      },
+      {
+        "receipt_monotonic_s": 3022.536997312,
+        "stamp_ns": 1793824692785088481,
+        "source_age_s": 0.002546002
+      },
+      {
+        "receipt_monotonic_s": 3022.868566522,
+        "stamp_ns": 1793824693113969430,
+        "source_age_s": 0.005245337
+      },
+      {
+        "receipt_monotonic_s": 3022.931696872,
+        "stamp_ns": 1793824693178690165,
+        "source_age_s": 0.003632984
+      },
+      {
+        "receipt_monotonic_s": 3022.997519601,
+        "stamp_ns": 1793824693244201456,
+        "source_age_s": 0.003943634
+      },
+      {
+        "receipt_monotonic_s": 3023.339629799,
+        "stamp_ns": 1793824693583795772,
+        "source_age_s": 0.006458991
+      },
+      {
+        "receipt_monotonic_s": 3023.413423952,
+        "stamp_ns": 1793824693657853261,
+        "source_age_s": 0.006196577
+      },
+      {
+        "receipt_monotonic_s": 3023.464839411,
+        "stamp_ns": 1793824693713048985,
+        "source_age_s": 0.002415163
+      },
+      {
+        "receipt_monotonic_s": 3023.800881915,
+        "stamp_ns": 1793824694046133147,
+        "source_age_s": 0.005392313
+      },
+      {
+        "receipt_monotonic_s": 3023.864566121,
+        "stamp_ns": 1793824694111878464,
+        "source_age_s": 0.003311813
+      },
+      {
+        "receipt_monotonic_s": 3023.930255162,
+        "stamp_ns": 1793824694178242609,
+        "source_age_s": 0.002637535
+      },
+      {
+        "receipt_monotonic_s": 3024.276330814,
+        "stamp_ns": 1793824694523686365,
+        "source_age_s": 0.003274449
+      },
+      {
+        "receipt_monotonic_s": 3024.331506621,
+        "stamp_ns": 1793824694577558984,
+        "source_age_s": 0.00457301
+      },
+      {
+        "receipt_monotonic_s": 3024.399534019,
+        "stamp_ns": 1793824694646554624,
+        "source_age_s": 0.003604186
+      },
+      {
+        "receipt_monotonic_s": 3024.736565517,
+        "stamp_ns": 1793824694981585148,
+        "source_age_s": 0.005623703
+      },
+      {
+        "receipt_monotonic_s": 3024.806510023,
+        "stamp_ns": 1793824695052715414,
+        "source_age_s": 0.00442336
+      },
+      {
+        "receipt_monotonic_s": 3024.863591297,
+        "stamp_ns": 1793824695110897719,
+        "source_age_s": 0.00331914
+      },
+      {
+        "receipt_monotonic_s": 3025.195670993,
+        "stamp_ns": 1793824695443737113,
+        "source_age_s": 0.002563668
+      },
+      {
+        "receipt_monotonic_s": 3025.262195093,
+        "stamp_ns": 1793824695509673953,
+        "source_age_s": 0.003147357
+      },
+      {
+        "receipt_monotonic_s": 3025.334561558,
+        "stamp_ns": 1793824695582114922,
+        "source_age_s": 0.003071749
+      },
+      {
+        "receipt_monotonic_s": 3025.669978165,
+        "stamp_ns": 1793824695915524917,
+        "source_age_s": 0.005085547
+      },
+      {
+        "receipt_monotonic_s": 3025.740978584,
+        "stamp_ns": 1793824695989684761,
+        "source_age_s": 0.001920229
+      },
+      {
+        "receipt_monotonic_s": 3025.802866845,
+        "stamp_ns": 1793824696051326927,
+        "source_age_s": 0.002165464
+      },
+      {
+        "receipt_monotonic_s": 3026.133481487,
+        "stamp_ns": 1793824696379533821,
+        "source_age_s": 0.004576251
+      },
+      {
+        "receipt_monotonic_s": 3026.203952361,
+        "stamp_ns": 1793824696452686430,
+        "source_age_s": 0.001892619
+      },
+      {
+        "receipt_monotonic_s": 3026.257214608,
+        "stamp_ns": 1793824696505745491,
+        "source_age_s": 0.002095824
+      },
+      {
+        "receipt_monotonic_s": 3026.595337547,
+        "stamp_ns": 1793824696841170891,
+        "source_age_s": 0.00479675
+      },
+      {
+        "receipt_monotonic_s": 3026.66244431,
+        "stamp_ns": 1793824696909858093,
+        "source_age_s": 0.003211119
+      },
+      {
+        "receipt_monotonic_s": 3026.736452239,
+        "stamp_ns": 1793824696984751524,
+        "source_age_s": 0.002325206
+      },
+      {
+        "receipt_monotonic_s": 3027.059324387,
+        "stamp_ns": 1793824697307719808,
+        "source_age_s": 0.002233318
+      },
+      {
+        "receipt_monotonic_s": 3027.127799619,
+        "stamp_ns": 1793824697375946169,
+        "source_age_s": 0.002481439
+      },
+      {
+        "receipt_monotonic_s": 3027.196384239,
+        "stamp_ns": 1793824697445017937,
+        "source_age_s": 0.00199198
+      },
+      {
+        "receipt_monotonic_s": 3027.530829575,
+        "stamp_ns": 1793824697776678815,
+        "source_age_s": 0.00477832
+      },
+      {
+        "receipt_monotonic_s": 3027.602120855,
+        "stamp_ns": 1793824697848054057,
+        "source_age_s": 0.004690791
+      },
+      {
+        "receipt_monotonic_s": 3027.665233707,
+        "stamp_ns": 1793824697911146481,
+        "source_age_s": 0.004712391
+      },
+      {
+        "receipt_monotonic_s": 3028.000983464,
+        "stamp_ns": 1793824698246035439,
+        "source_age_s": 0.005572846
+      },
+      {
+        "receipt_monotonic_s": 3028.061641235,
+        "stamp_ns": 1793824698307729200,
+        "source_age_s": 0.004537595
+      },
+      {
+        "receipt_monotonic_s": 3028.128496633,
+        "stamp_ns": 1793824698375005262,
+        "source_age_s": 0.004115761
+      },
+      {
+        "receipt_monotonic_s": 3028.462548482,
+        "stamp_ns": 1793824698710569660,
+        "source_age_s": 0.002606839
+      },
+      {
+        "receipt_monotonic_s": 3028.532105186,
+        "stamp_ns": 1793824698780566760,
+        "source_age_s": 0.002169703
+      },
+      {
+        "receipt_monotonic_s": 3028.592766365,
+        "stamp_ns": 1793824698840989034,
+        "source_age_s": 0.00240282
+      },
+      {
+        "receipt_monotonic_s": 3028.937679677,
+        "stamp_ns": 1793824699183088974,
+        "source_age_s": 0.005233315
+      },
+      {
+        "receipt_monotonic_s": 3028.996801401,
+        "stamp_ns": 1793824699244731957,
+        "source_age_s": 0.002695536
+      },
+      {
+        "receipt_monotonic_s": 3029.060761316,
+        "stamp_ns": 1793824699307478205,
+        "source_age_s": 0.003910362
+      },
+      {
+        "receipt_monotonic_s": 3029.396274879,
+        "stamp_ns": 1793824699643404310,
+        "source_age_s": 0.003495201
+      },
+      {
+        "receipt_monotonic_s": 3029.471855428,
+        "stamp_ns": 1793824699719087295,
+        "source_age_s": 0.003393442
+      },
+      {
+        "receipt_monotonic_s": 3029.561023688,
+        "stamp_ns": 1793824699808316758,
+        "source_age_s": 0.003333058
+      },
+      {
+        "receipt_monotonic_s": 3029.860682293,
+        "stamp_ns": 1793824700103939702,
+        "source_age_s": 0.007368551
+      },
+      {
+        "receipt_monotonic_s": 3029.930361647,
+        "stamp_ns": 1793824700176777440,
+        "source_age_s": 0.004209602
+      },
+      {
+        "receipt_monotonic_s": 3029.993560626,
+        "stamp_ns": 1793824700239821129,
+        "source_age_s": 0.004367074
+      },
+      {
+        "receipt_monotonic_s": 3030.33835725,
+        "stamp_ns": 1793824700584612388,
+        "source_age_s": 0.004384082
+      },
+      {
+        "receipt_monotonic_s": 3030.39861844,
+        "stamp_ns": 1793824700646838795,
+        "source_age_s": 0.002403802
+      },
+      {
+        "receipt_monotonic_s": 3030.465640175,
+        "stamp_ns": 1793824700713877186,
+        "source_age_s": 0.002388829
+      },
+      {
+        "receipt_monotonic_s": 3030.801135462,
+        "stamp_ns": 1793824701047070181,
+        "source_age_s": 0.004697656
+      },
+      {
+        "receipt_monotonic_s": 3030.869062579,
+        "stamp_ns": 1793824701117982425,
+        "source_age_s": 0.001707568
+      },
+      {
+        "receipt_monotonic_s": 3030.934886563,
+        "stamp_ns": 1793824701182862610,
+        "source_age_s": 0.002649692
+      },
+      {
+        "receipt_monotonic_s": 3031.266128204,
+        "stamp_ns": 1793824701514614961,
+        "source_age_s": 0.002141435
+      },
+      {
+        "receipt_monotonic_s": 3031.333984001,
+        "stamp_ns": 1793824701581911217,
+        "source_age_s": 0.002697075
+      },
+      {
+        "receipt_monotonic_s": 3031.401862588,
+        "stamp_ns": 1793824701650526216,
+        "source_age_s": 0.001960493
+      },
+      {
+        "receipt_monotonic_s": 3031.741265752,
+        "stamp_ns": 1793824701988941853,
+        "source_age_s": 0.002951123
+      },
+      {
+        "receipt_monotonic_s": 3031.80981251,
+        "stamp_ns": 1793824702058536086,
+        "source_age_s": 0.001901142
+      },
+      {
+        "receipt_monotonic_s": 3031.8705702,
+        "stamp_ns": 1793824702117639385,
+        "source_age_s": 0.003555326
+      },
+      {
+        "receipt_monotonic_s": 3032.194973647,
+        "stamp_ns": 1793824702442886241,
+        "source_age_s": 0.002715275
+      },
+      {
+        "receipt_monotonic_s": 3032.260692976,
+        "stamp_ns": 1793824702508899095,
+        "source_age_s": 0.002418875
+      },
+      {
+        "receipt_monotonic_s": 3032.327749335,
+        "stamp_ns": 1793824702576089781,
+        "source_age_s": 0.002284655
+      },
+      {
+        "receipt_monotonic_s": 3032.678467965,
+        "stamp_ns": 1793824702923216508,
+        "source_age_s": 0.005878722
+      },
+      {
+        "receipt_monotonic_s": 3032.733860313,
+        "stamp_ns": 1793824702981854678,
+        "source_age_s": 0.002631351
+      },
+      {
+        "receipt_monotonic_s": 3032.799029005,
+        "stamp_ns": 1793824703047518182,
+        "source_age_s": 0.002141746
+      },
+      {
+        "receipt_monotonic_s": 3033.128676655,
+        "stamp_ns": 1793824703374812964,
+        "source_age_s": 0.004490253
+      },
+      {
+        "receipt_monotonic_s": 3033.190290896,
+        "stamp_ns": 1793824703438594437,
+        "source_age_s": 0.002322736
+      },
+      {
+        "receipt_monotonic_s": 3033.262089104,
+        "stamp_ns": 1793824703506041588,
+        "source_age_s": 0.006672187
+      },
+      {
+        "receipt_monotonic_s": 3033.600679683,
+        "stamp_ns": 1793824703846044561,
+        "source_age_s": 0.005278796
+      },
+      {
+        "receipt_monotonic_s": 3033.663781248,
+        "stamp_ns": 1793824703912004960,
+        "source_age_s": 0.002402672
+      },
+      {
+        "receipt_monotonic_s": 3033.773854001,
+        "stamp_ns": 1793824704021222141,
+        "source_age_s": 0.003257439
+      },
+      {
+        "receipt_monotonic_s": 3034.069852098,
+        "stamp_ns": 1793824704316790003,
+        "source_age_s": 0.003689553
+      },
+      {
+        "receipt_monotonic_s": 3034.135565549,
+        "stamp_ns": 1793824704381919567,
+        "source_age_s": 0.004271002
+      },
+      {
+        "receipt_monotonic_s": 3034.203904242,
+        "stamp_ns": 1793824704452736275,
+        "source_age_s": 0.001793684
+      },
+      {
+        "receipt_monotonic_s": 3034.552462777,
+        "stamp_ns": 1793824704798476381,
+        "source_age_s": 0.00461414
+      },
+      {
+        "receipt_monotonic_s": 3034.596283422,
+        "stamp_ns": 1793824704844460512,
+        "source_age_s": 0.002447558
+      },
+      {
+        "receipt_monotonic_s": 3034.662195611,
+        "stamp_ns": 1793824704909951183,
+        "source_age_s": 0.002869663
+      },
+      {
+        "receipt_monotonic_s": 3034.998989143,
+        "stamp_ns": 1793824705243112262,
+        "source_age_s": 0.006503347
+      },
+      {
+        "receipt_monotonic_s": 3035.059410964,
+        "stamp_ns": 1793824705303845017,
+        "source_age_s": 0.00619151
+      },
+      {
+        "receipt_monotonic_s": 3035.126707361,
+        "stamp_ns": 1793824705373737554,
+        "source_age_s": 0.003594417
+      },
+      {
+        "receipt_monotonic_s": 3035.38719384,
+        "stamp_ns": 1793824705634016046,
+        "source_age_s": 0.003805742
+      },
+      {
+        "receipt_monotonic_s": 3035.458323517,
+        "stamp_ns": 1793824705707105964,
+        "source_age_s": 0.001842853
+      },
+      {
+        "receipt_monotonic_s": 3035.534824834,
+        "stamp_ns": 1793824705776720612,
+        "source_age_s": 0.00872896
+      },
+      {
+        "receipt_monotonic_s": 3035.865296272,
+        "stamp_ns": 1793824706108949465,
+        "source_age_s": 0.006973417
+      },
+      {
+        "receipt_monotonic_s": 3035.919301504,
+        "stamp_ns": 1793824706167644786,
+        "source_age_s": 0.002283648
+      },
+      {
+        "receipt_monotonic_s": 3035.990042827,
+        "stamp_ns": 1793824706238637005,
+        "source_age_s": 0.002031686
+      },
+      {
+        "receipt_monotonic_s": 3036.323319987,
+        "stamp_ns": 1793824706569436454,
+        "source_age_s": 0.004509028
+      },
+      {
+        "receipt_monotonic_s": 3036.392313771,
+        "stamp_ns": 1793824706640374009,
+        "source_age_s": 0.002565795
+      },
+      {
+        "receipt_monotonic_s": 3036.46944584,
+        "stamp_ns": 1793824706717874393,
+        "source_age_s": 0.002196499
+      },
+      {
+        "receipt_monotonic_s": 3036.791088636,
+        "stamp_ns": 1793824707037143363,
+        "source_age_s": 0.004572619
+      },
+      {
+        "receipt_monotonic_s": 3036.861681677,
+        "stamp_ns": 1793824707109832570,
+        "source_age_s": 0.002475397
+      },
+      {
+        "receipt_monotonic_s": 3036.926629949,
+        "stamp_ns": 1793824707172694171,
+        "source_age_s": 0.004560619
+      },
+      {
+        "receipt_monotonic_s": 3037.261946065,
+        "stamp_ns": 1793824707507529768,
+        "source_age_s": 0.005052657
+      },
+      {
+        "receipt_monotonic_s": 3037.330766863,
+        "stamp_ns": 1793824707575742766,
+        "source_age_s": 0.005648539
+      },
+      {
+        "receipt_monotonic_s": 3037.414569626,
+        "stamp_ns": 1793824707658013836,
+        "source_age_s": 0.007181958
+      },
+      {
+        "receipt_monotonic_s": 3037.75657133,
+        "stamp_ns": 1793824708002895809,
+        "source_age_s": 0.004303121
+      },
+      {
+        "receipt_monotonic_s": 3037.857861072,
+        "stamp_ns": 1793824708106253443,
+        "source_age_s": 0.002236714
+      },
+      {
+        "receipt_monotonic_s": 3037.944629629,
+        "stamp_ns": 1793824708192929021,
+        "source_age_s": 0.002325492
+      },
+      {
+        "receipt_monotonic_s": 3038.259830292,
+        "stamp_ns": 1793824708504894026,
+        "source_age_s": 0.005562706
+      },
+      {
+        "receipt_monotonic_s": 3038.323713976,
+        "stamp_ns": 1793824708571565277,
+        "source_age_s": 0.002774372
+      },
+      {
+        "receipt_monotonic_s": 3038.397375548,
+        "stamp_ns": 1793824708641252232,
+        "source_age_s": 0.006747881
+      },
+      {
+        "receipt_monotonic_s": 3038.728959619,
+        "stamp_ns": 1793824708975021306,
+        "source_age_s": 0.004566232
+      },
+      {
+        "receipt_monotonic_s": 3038.787449935,
+        "stamp_ns": 1793824709035850264,
+        "source_age_s": 0.002224853
+      },
+      {
+        "receipt_monotonic_s": 3038.856778337,
+        "stamp_ns": 1793824709104905131,
+        "source_age_s": 0.002499848
+      },
+      {
+        "receipt_monotonic_s": 3039.187375756,
+        "stamp_ns": 1793824709435121574,
+        "source_age_s": 0.002880768
+      },
+      {
+        "receipt_monotonic_s": 3039.257043075,
+        "stamp_ns": 1793824709505903489,
+        "source_age_s": 0.001772766
+      },
+      {
+        "receipt_monotonic_s": 3039.332208363,
+        "stamp_ns": 1793824709581115516,
+        "source_age_s": 0.001722056
+      },
+      {
+        "receipt_monotonic_s": 3039.760663977,
+        "stamp_ns": 1793824710007361646,
+        "source_age_s": 0.0039271
+      },
+      {
+        "receipt_monotonic_s": 3039.856666384,
+        "stamp_ns": 1793824710103985360,
+        "source_age_s": 0.003307184
+      },
+      {
+        "receipt_monotonic_s": 3039.920635252,
+        "stamp_ns": 1793824710169202238,
+        "source_age_s": 0.002058067
+      },
+      {
+        "receipt_monotonic_s": 3040.2647227,
+        "stamp_ns": 1793824710510378815,
+        "source_age_s": 0.004969745
+      },
+      {
+        "receipt_monotonic_s": 3040.320405891,
+        "stamp_ns": 1793824710568852344,
+        "source_age_s": 0.00217943
+      },
+      {
+        "receipt_monotonic_s": 3040.39268928,
+        "stamp_ns": 1793824710637427060,
+        "source_age_s": 0.005887947
+      },
+      {
+        "receipt_monotonic_s": 3040.736575714,
+        "stamp_ns": 1793824710982264956,
+        "source_age_s": 0.004938443
+      },
+      {
+        "receipt_monotonic_s": 3040.804353941,
+        "stamp_ns": 1793824711052841285,
+        "source_age_s": 0.002140504
+      },
+      {
+        "receipt_monotonic_s": 3040.885829628,
+        "stamp_ns": 1793824711132866279,
+        "source_age_s": 0.003587795
+      },
+      {
+        "receipt_monotonic_s": 3041.272608203,
+        "stamp_ns": 1793824711517052460,
+        "source_age_s": 0.006181753
+      },
+      {
+        "receipt_monotonic_s": 3041.321229741,
+        "stamp_ns": 1793824711570054528,
+        "source_age_s": 0.001802359
+      },
+      {
+        "receipt_monotonic_s": 3041.386954811,
+        "stamp_ns": 1793824711634919064,
+        "source_age_s": 0.002662311
+      },
+      {
+        "receipt_monotonic_s": 3041.723345613,
+        "stamp_ns": 1793824711968582791,
+        "source_age_s": 0.005390367
+      },
+      {
+        "receipt_monotonic_s": 3041.789665559,
+        "stamp_ns": 1793824712035093524,
+        "source_age_s": 0.005196864
+      },
+      {
+        "receipt_monotonic_s": 3041.852977526,
+        "stamp_ns": 1793824712099848692,
+        "source_age_s": 0.003754227
+      },
+      {
+        "receipt_monotonic_s": 3042.186016205,
+        "stamp_ns": 1793824712434408168,
+        "source_age_s": 0.002236813
+      },
+      {
+        "receipt_monotonic_s": 3042.250466664,
+        "stamp_ns": 1793824712496577581,
+        "source_age_s": 0.004513107
+      },
+      {
+        "receipt_monotonic_s": 3042.320531961,
+        "stamp_ns": 1793824712566454691,
+        "source_age_s": 0.004701723
+      },
+      {
+        "receipt_monotonic_s": 3042.664790798,
+        "stamp_ns": 1793824712908217776,
+        "source_age_s": 0.007199823
+      },
+      {
+        "receipt_monotonic_s": 3042.724651402,
+        "stamp_ns": 1793824712972878860,
+        "source_age_s": 0.00239707
+      },
+      {
+        "receipt_monotonic_s": 3042.784052158,
+        "stamp_ns": 1793824713029716452,
+        "source_age_s": 0.004961398
+      },
+      {
+        "receipt_monotonic_s": 3043.122946941,
+        "stamp_ns": 1793824713369407320,
+        "source_age_s": 0.004164944
+      },
+      {
+        "receipt_monotonic_s": 3043.183945287,
+        "stamp_ns": 1793824713429895452,
+        "source_age_s": 0.004674402
+      },
+      {
+        "receipt_monotonic_s": 3043.256220093,
+        "stamp_ns": 1793824713501866242,
+        "source_age_s": 0.00497814
+      },
+      {
+        "receipt_monotonic_s": 3043.595660007,
+        "stamp_ns": 1793824713840891846,
+        "source_age_s": 0.005394713
+      },
+      {
+        "receipt_monotonic_s": 3043.654238485,
+        "stamp_ns": 1793824713899979742,
+        "source_age_s": 0.004884622
+      },
+      {
+        "receipt_monotonic_s": 3043.717630258,
+        "stamp_ns": 1793824713962892826,
+        "source_age_s": 0.005361972
+      },
+      {
+        "receipt_monotonic_s": 3044.052738895,
+        "stamp_ns": 1793824714297796828,
+        "source_age_s": 0.005568729
+      },
+      {
+        "receipt_monotonic_s": 3044.142750737,
+        "stamp_ns": 1793824714389337042,
+        "source_age_s": 0.004039788
+      },
+      {
+        "receipt_monotonic_s": 3044.212589127,
+        "stamp_ns": 1793824714458686077,
+        "source_age_s": 0.004528771
+      },
+      {
+        "receipt_monotonic_s": 3044.527775134,
+        "stamp_ns": 1793824714772716528,
+        "source_age_s": 0.005685221
+      },
+      {
+        "receipt_monotonic_s": 3044.588924645,
+        "stamp_ns": 1793824714834730291,
+        "source_age_s": 0.004827094
+      },
+      {
+        "receipt_monotonic_s": 3044.652262467,
+        "stamp_ns": 1793824714894775712,
+        "source_age_s": 0.008112938
+      },
+      {
+        "receipt_monotonic_s": 3044.982158351,
+        "stamp_ns": 1793824715228489009,
+        "source_age_s": 0.004317007
+      },
+      {
+        "receipt_monotonic_s": 3045.068459651,
+        "stamp_ns": 1793824715316893832,
+        "source_age_s": 0.002197252
+      },
+      {
+        "receipt_monotonic_s": 3045.126050858,
+        "stamp_ns": 1793824715371432676,
+        "source_age_s": 0.005242607
+      },
+      {
+        "receipt_monotonic_s": 3045.409440369,
+        "stamp_ns": 1793824715656997455,
+        "source_age_s": 0.003070098
+      },
+      {
+        "receipt_monotonic_s": 3045.466058982,
+        "stamp_ns": 1793824715714346944,
+        "source_age_s": 0.002337698
+      },
+      {
+        "receipt_monotonic_s": 3046.036663958,
+        "stamp_ns": 1793824716282381733,
+        "source_age_s": 0.004909453
+      },
+      {
+        "receipt_monotonic_s": 3046.436596326,
+        "stamp_ns": 1793824716682164272,
+        "source_age_s": 0.005066172
+      },
+      {
+        "receipt_monotonic_s": 3046.521185252,
+        "stamp_ns": 1793824716769864059,
+        "source_age_s": 0.00194723
+      },
+      {
+        "receipt_monotonic_s": 3046.582550819,
+        "stamp_ns": 1793824716830927147,
+        "source_age_s": 0.002249564
+      },
+      {
+        "receipt_monotonic_s": 3046.940575545,
+        "stamp_ns": 1793824717185056310,
+        "source_age_s": 0.006143893
+      },
+      {
+        "receipt_monotonic_s": 3046.989064522,
+        "stamp_ns": 1793824717236996493,
+        "source_age_s": 0.002693489
+      },
+      {
+        "receipt_monotonic_s": 3047.049955898,
+        "stamp_ns": 1793824717298790354,
+        "source_age_s": 0.001791262
+      },
+      {
+        "receipt_monotonic_s": 3047.400058034,
+        "stamp_ns": 1793824717645828317,
+        "source_age_s": 0.00485937
+      },
+      {
+        "receipt_monotonic_s": 3047.468964953,
+        "stamp_ns": 1793824717716933669,
+        "source_age_s": 0.002655927
+      },
+      {
+        "receipt_monotonic_s": 3047.518619064,
+        "stamp_ns": 1793824717766918650,
+        "source_age_s": 0.002326822
+      },
+      {
+        "receipt_monotonic_s": 3047.849190608,
+        "stamp_ns": 1793824718096199341,
+        "source_age_s": 0.003614574
+      },
+      {
+        "receipt_monotonic_s": 3047.939071681,
+        "stamp_ns": 1793824718187643763,
+        "source_age_s": 0.002059961
+      },
+      {
+        "receipt_monotonic_s": 3047.987288197,
+        "stamp_ns": 1793824718235591417,
+        "source_age_s": 0.002324574
+      },
+      {
+        "receipt_monotonic_s": 3048.314935232,
+        "stamp_ns": 1793824718562787811,
+        "source_age_s": 0.002773301
+      },
+      {
+        "receipt_monotonic_s": 3048.387795672,
+        "stamp_ns": 1793824718636686119,
+        "source_age_s": 0.001734383
+      },
+      {
+        "receipt_monotonic_s": 3048.468923478,
+        "stamp_ns": 1793824718717866521,
+        "source_age_s": 0.001682127
+      },
+      {
+        "receipt_monotonic_s": 3048.786349742,
+        "stamp_ns": 1793824719033671883,
+        "source_age_s": 0.003304142
+      },
+      {
+        "receipt_monotonic_s": 3048.857898446,
+        "stamp_ns": 1793824719106193480,
+        "source_age_s": 0.002332091
+      },
+      {
+        "receipt_monotonic_s": 3048.915650767,
+        "stamp_ns": 1793824719162396129,
+        "source_age_s": 0.003877207
+      },
+      {
+        "receipt_monotonic_s": 3049.255346232,
+        "stamp_ns": 1793824719501717162,
+        "source_age_s": 0.004256044
+      },
+      {
+        "receipt_monotonic_s": 3049.317178662,
+        "stamp_ns": 1793824719564762939,
+        "source_age_s": 0.003041014
+      },
+      {
+        "receipt_monotonic_s": 3049.376852116,
+        "stamp_ns": 1793824719625543282,
+        "source_age_s": 0.001934856
+      },
+      {
+        "receipt_monotonic_s": 3049.716914856,
+        "stamp_ns": 1793824719964253570,
+        "source_age_s": 0.003289418
+      },
+      {
+        "receipt_monotonic_s": 3049.804061449,
+        "stamp_ns": 1793824720051944753,
+        "source_age_s": 0.002742629
+      },
+      {
+        "receipt_monotonic_s": 3049.851784345,
+        "stamp_ns": 1793824720097881298,
+        "source_age_s": 0.004529046
+      },
+      {
+        "receipt_monotonic_s": 3050.187505191,
+        "stamp_ns": 1793824720431177515,
+        "source_age_s": 0.006954262
+      },
+      {
+        "receipt_monotonic_s": 3050.255485764,
+        "stamp_ns": 1793824720502658243,
+        "source_age_s": 0.003454544
+      },
+      {
+        "receipt_monotonic_s": 3050.319057108,
+        "stamp_ns": 1793824720567319644,
+        "source_age_s": 0.002363852
+      },
+      {
+        "receipt_monotonic_s": 3050.647227909,
+        "stamp_ns": 1793824720893948899,
+        "source_age_s": 0.003905856
+      },
+      {
+        "receipt_monotonic_s": 3050.718500435,
+        "stamp_ns": 1793824720966308256,
+        "source_age_s": 0.002817462
+      },
+      {
+        "receipt_monotonic_s": 3050.780781557,
+        "stamp_ns": 1793824721029409305,
+        "source_age_s": 0.002000556
+      }
+    ],
+    "yolo": [
+      {
+        "receipt_monotonic_s": 3021.19482045,
+        "stamp_ns": 1793824691317370624,
+        "source_age_s": 0.128082607
+      },
+      {
+        "receipt_monotonic_s": 3021.298988441,
+        "stamp_ns": 1793824691391914116,
+        "source_age_s": 0.157697277
+      },
+      {
+        "receipt_monotonic_s": 3021.408362204,
+        "stamp_ns": 1793824691453768151,
+        "source_age_s": 0.205218096
+      },
+      {
+        "receipt_monotonic_s": 3021.639647842,
+        "stamp_ns": 1793824691776591242,
+        "source_age_s": 0.113684939
+      },
+      {
+        "receipt_monotonic_s": 3021.750213146,
+        "stamp_ns": 1793824691857689863,
+        "source_age_s": 0.143149338
+      },
+      {
+        "receipt_monotonic_s": 3021.856091412,
+        "stamp_ns": 1793824691910256968,
+        "source_age_s": 0.196459702
+      },
+      {
+        "receipt_monotonic_s": 3022.041171678,
+        "stamp_ns": 1793824692179516854,
+        "source_age_s": 0.112280426
+      },
+      {
+        "receipt_monotonic_s": 3022.145312931,
+        "stamp_ns": 1793824692254828955,
+        "source_age_s": 0.14110935
+      },
+      {
+        "receipt_monotonic_s": 3022.24823542,
+        "stamp_ns": 1793824692316990166,
+        "source_age_s": 0.181866718
+      },
+      {
+        "receipt_monotonic_s": 3022.515242535,
+        "stamp_ns": 1793824692647229901,
+        "source_age_s": 0.118635445
+      },
+      {
+        "receipt_monotonic_s": 3022.62944028,
+        "stamp_ns": 1793824692723695086,
+        "source_age_s": 0.156373378
+      },
+      {
+        "receipt_monotonic_s": 3022.739513826,
+        "stamp_ns": 1793824692785088481,
+        "source_age_s": 0.205047848
+      },
+      {
+        "receipt_monotonic_s": 3022.974765366,
+        "stamp_ns": 1793824693113969430,
+        "source_age_s": 0.11141899
+      },
+      {
+        "receipt_monotonic_s": 3023.081119059,
+        "stamp_ns": 1793824693178690165,
+        "source_age_s": 0.153055133
+      },
+      {
+        "receipt_monotonic_s": 3023.187494477,
+        "stamp_ns": 1793824693244201456,
+        "source_age_s": 0.193922614
+      },
+      {
+        "receipt_monotonic_s": 3023.449158911,
+        "stamp_ns": 1793824693583795772,
+        "source_age_s": 0.115989906
+      },
+      {
+        "receipt_monotonic_s": 3023.560627675,
+        "stamp_ns": 1793824693657853261,
+        "source_age_s": 0.153399404
+      },
+      {
+        "receipt_monotonic_s": 3023.669482883,
+        "stamp_ns": 1793824693713048985,
+        "source_age_s": 0.207058746
+      },
+      {
+        "receipt_monotonic_s": 3023.906694641,
+        "stamp_ns": 1793824694046133147,
+        "source_age_s": 0.111187924
+      },
+      {
+        "receipt_monotonic_s": 3024.020751514,
+        "stamp_ns": 1793824694111878464,
+        "source_age_s": 0.159498844
+      },
+      {
+        "receipt_monotonic_s": 3024.175956606,
+        "stamp_ns": 1793824694178242609,
+        "source_age_s": 0.248338902
+      },
+      {
+        "receipt_monotonic_s": 3024.37669746,
+        "stamp_ns": 1793824694523686365,
+        "source_age_s": 0.103636949
+      },
+      {
+        "receipt_monotonic_s": 3024.486739472,
+        "stamp_ns": 1793824694577558984,
+        "source_age_s": 0.15980769
+      },
+      {
+        "receipt_monotonic_s": 3024.587494247,
+        "stamp_ns": 1793824694646554624,
+        "source_age_s": 0.191561753
+      },
+      {
+        "receipt_monotonic_s": 3024.834443468,
+        "stamp_ns": 1793824694981585148,
+        "source_age_s": 0.103480587
+      },
+      {
+        "receipt_monotonic_s": 3024.94406219,
+        "stamp_ns": 1793824695052715414,
+        "source_age_s": 0.14196976
+      },
+      {
+        "receipt_monotonic_s": 3025.047994539,
+        "stamp_ns": 1793824695110897719,
+        "source_age_s": 0.1877189
+      },
+      {
+        "receipt_monotonic_s": 3025.298969619,
+        "stamp_ns": 1793824695443737113,
+        "source_age_s": 0.105859969
+      },
+      {
+        "receipt_monotonic_s": 3025.401413424,
+        "stamp_ns": 1793824695509673953,
+        "source_age_s": 0.142362069
+      },
+      {
+        "receipt_monotonic_s": 3025.5013584,
+        "stamp_ns": 1793824695582114922,
+        "source_age_s": 0.169868391
+      },
+      {
+        "receipt_monotonic_s": 3025.768472126,
+        "stamp_ns": 1793824695915524917,
+        "source_age_s": 0.103571996
+      },
+      {
+        "receipt_monotonic_s": 3025.8752431,
+        "stamp_ns": 1793824695989684761,
+        "source_age_s": 0.136180922
+      },
+      {
+        "receipt_monotonic_s": 3025.982324822,
+        "stamp_ns": 1793824696051326927,
+        "source_age_s": 0.181621943
+      },
+      {
+        "receipt_monotonic_s": 3026.243616563,
+        "stamp_ns": 1793824696379533821,
+        "source_age_s": 0.114708421
+      },
+      {
+        "receipt_monotonic_s": 3026.346673833,
+        "stamp_ns": 1793824696452686430,
+        "source_age_s": 0.144611913
+      },
+      {
+        "receipt_monotonic_s": 3026.458411762,
+        "stamp_ns": 1793824696505745491,
+        "source_age_s": 0.203288573
+      },
+      {
+        "receipt_monotonic_s": 3026.709787527,
+        "stamp_ns": 1793824696841170891,
+        "source_age_s": 0.119243038
+      },
+      {
+        "receipt_monotonic_s": 3026.822776874,
+        "stamp_ns": 1793824696909858093,
+        "source_age_s": 0.163544464
+      },
+      {
+        "receipt_monotonic_s": 3026.928471299,
+        "stamp_ns": 1793824696984751524,
+        "source_age_s": 0.194342732
+      },
+      {
+        "receipt_monotonic_s": 3027.173540645,
+        "stamp_ns": 1793824697307719808,
+        "source_age_s": 0.116457016
+      },
+      {
+        "receipt_monotonic_s": 3027.280768519,
+        "stamp_ns": 1793824697375946169,
+        "source_age_s": 0.155448112
+      },
+      {
+        "receipt_monotonic_s": 3027.39392931,
+        "stamp_ns": 1793824697445017937,
+        "source_age_s": 0.199535701
+      },
+      {
+        "receipt_monotonic_s": 3027.638982937,
+        "stamp_ns": 1793824697776678815,
+        "source_age_s": 0.112930152
+      },
+      {
+        "receipt_monotonic_s": 3027.748536803,
+        "stamp_ns": 1793824697848054057,
+        "source_age_s": 0.15110537
+      },
+      {
+        "receipt_monotonic_s": 3027.850871329,
+        "stamp_ns": 1793824697911146481,
+        "source_age_s": 0.19034799
+      },
+      {
+        "receipt_monotonic_s": 3028.101266903,
+        "stamp_ns": 1793824698246035439,
+        "source_age_s": 0.105854275
+      },
+      {
+        "receipt_monotonic_s": 3028.208933485,
+        "stamp_ns": 1793824698307729200,
+        "source_age_s": 0.151826656
+      },
+      {
+        "receipt_monotonic_s": 3028.310790758,
+        "stamp_ns": 1793824698375005262,
+        "source_age_s": 0.186407798
+      },
+      {
+        "receipt_monotonic_s": 3028.566174237,
+        "stamp_ns": 1793824698710569660,
+        "source_age_s": 0.106230735
+      },
+      {
+        "receipt_monotonic_s": 3028.67361348,
+        "stamp_ns": 1793824698780566760,
+        "source_age_s": 0.14367225
+      },
+      {
+        "receipt_monotonic_s": 3028.777886826,
+        "stamp_ns": 1793824698840989034,
+        "source_age_s": 0.18752329
+      },
+      {
+        "receipt_monotonic_s": 3029.038663919,
+        "stamp_ns": 1793824699183088974,
+        "source_age_s": 0.106200544
+      },
+      {
+        "receipt_monotonic_s": 3029.147185859,
+        "stamp_ns": 1793824699244731957,
+        "source_age_s": 0.153076251
+      },
+      {
+        "receipt_monotonic_s": 3029.257144406,
+        "stamp_ns": 1793824699307478205,
+        "source_age_s": 0.200288397
+      },
+      {
+        "receipt_monotonic_s": 3029.498328103,
+        "stamp_ns": 1793824699643404310,
+        "source_age_s": 0.105551369
+      },
+      {
+        "receipt_monotonic_s": 3029.604250364,
+        "stamp_ns": 1793824699719087295,
+        "source_age_s": 0.135787879
+      },
+      {
+        "receipt_monotonic_s": 3029.704454716,
+        "stamp_ns": 1793824699808316758,
+        "source_age_s": 0.146764617
+      },
+      {
+        "receipt_monotonic_s": 3029.963737026,
+        "stamp_ns": 1793824700103939702,
+        "source_age_s": 0.110422406
+      },
+      {
+        "receipt_monotonic_s": 3030.077943701,
+        "stamp_ns": 1793824700176777440,
+        "source_age_s": 0.151789094
+      },
+      {
+        "receipt_monotonic_s": 3030.187312872,
+        "stamp_ns": 1793824700239821129,
+        "source_age_s": 0.198116295
+      },
+      {
+        "receipt_monotonic_s": 3030.448527127,
+        "stamp_ns": 1793824700584612388,
+        "source_age_s": 0.114540185
+      },
+      {
+        "receipt_monotonic_s": 3030.561833599,
+        "stamp_ns": 1793824700646838795,
+        "source_age_s": 0.165621518
+      },
+      {
+        "receipt_monotonic_s": 3030.665593219,
+        "stamp_ns": 1793824700713877186,
+        "source_age_s": 0.202339243
+      },
+      {
+        "receipt_monotonic_s": 3030.910497344,
+        "stamp_ns": 1793824701047070181,
+        "source_age_s": 0.114054098
+      },
+      {
+        "receipt_monotonic_s": 3031.03195239,
+        "stamp_ns": 1793824701117982425,
+        "source_age_s": 0.164608712
+      },
+      {
+        "receipt_monotonic_s": 3031.135432302,
+        "stamp_ns": 1793824701182862610,
+        "source_age_s": 0.203193552
+      },
+      {
+        "receipt_monotonic_s": 3031.372526925,
+        "stamp_ns": 1793824701514614961,
+        "source_age_s": 0.108537967
+      },
+      {
+        "receipt_monotonic_s": 3031.477753895,
+        "stamp_ns": 1793824701581911217,
+        "source_age_s": 0.146467979
+      },
+      {
+        "receipt_monotonic_s": 3031.58036799,
+        "stamp_ns": 1793824701650526216,
+        "source_age_s": 0.180463295
+      },
+      {
+        "receipt_monotonic_s": 3031.843545646,
+        "stamp_ns": 1793824701988941853,
+        "source_age_s": 0.10523252
+      },
+      {
+        "receipt_monotonic_s": 3031.944450155,
+        "stamp_ns": 1793824702058536086,
+        "source_age_s": 0.136538622
+      },
+      {
+        "receipt_monotonic_s": 3032.042770039,
+        "stamp_ns": 1793824702117639385,
+        "source_age_s": 0.175755928
+      },
+      {
+        "receipt_monotonic_s": 3032.295448368,
+        "stamp_ns": 1793824702442886241,
+        "source_age_s": 0.103187894
+      },
+      {
+        "receipt_monotonic_s": 3032.403955238,
+        "stamp_ns": 1793824702508899095,
+        "source_age_s": 0.14567846
+      },
+      {
+        "receipt_monotonic_s": 3032.502745113,
+        "stamp_ns": 1793824702576089781,
+        "source_age_s": 0.177277561
+      },
+      {
+        "receipt_monotonic_s": 3032.77834294,
+        "stamp_ns": 1793824702923216508,
+        "source_age_s": 0.105751646
+      },
+      {
+        "receipt_monotonic_s": 3032.88143227,
+        "stamp_ns": 1793824702981854678,
+        "source_age_s": 0.150203077
+      },
+      {
+        "receipt_monotonic_s": 3032.981462058,
+        "stamp_ns": 1793824703047518182,
+        "source_age_s": 0.184568955
+      },
+      {
+        "receipt_monotonic_s": 3033.237384179,
+        "stamp_ns": 1793824703374812964,
+        "source_age_s": 0.113196358
+      },
+      {
+        "receipt_monotonic_s": 3033.338143771,
+        "stamp_ns": 1793824703438594437,
+        "source_age_s": 0.150173969
+      },
+      {
+        "receipt_monotonic_s": 3033.437085811,
+        "stamp_ns": 1793824703506041588,
+        "source_age_s": 0.181666363
+      },
+      {
+        "receipt_monotonic_s": 3033.705384331,
+        "stamp_ns": 1793824703846044561,
+        "source_age_s": 0.109962952
+      },
+      {
+        "receipt_monotonic_s": 3033.805763194,
+        "stamp_ns": 1793824703912004960,
+        "source_age_s": 0.144384402
+      },
+      {
+        "receipt_monotonic_s": 3033.904488313,
+        "stamp_ns": 1793824704021222141,
+        "source_age_s": 0.133888546
+      },
+      {
+        "receipt_monotonic_s": 3034.179060479,
+        "stamp_ns": 1793824704316790003,
+        "source_age_s": 0.112899467
+      },
+      {
+        "receipt_monotonic_s": 3034.291960441,
+        "stamp_ns": 1793824704381919567,
+        "source_age_s": 0.160665564
+      },
+      {
+        "receipt_monotonic_s": 3034.406430957,
+        "stamp_ns": 1793824704452736275,
+        "source_age_s": 0.204317188
+      },
+      {
+        "receipt_monotonic_s": 3034.663412503,
+        "stamp_ns": 1793824704798476381,
+        "source_age_s": 0.115561174
+      },
+      {
+        "receipt_monotonic_s": 3034.766494666,
+        "stamp_ns": 1793824704909951183,
+        "source_age_s": 0.10717099
+      },
+      {
+        "receipt_monotonic_s": 3035.104631628,
+        "stamp_ns": 1793824705243112262,
+        "source_age_s": 0.112145134
+      },
+      {
+        "receipt_monotonic_s": 3035.217544721,
+        "stamp_ns": 1793824705303845017,
+        "source_age_s": 0.164325664
+      },
+      {
+        "receipt_monotonic_s": 3035.325182119,
+        "stamp_ns": 1793824705373737554,
+        "source_age_s": 0.202069641
+      },
+      {
+        "receipt_monotonic_s": 3035.494495212,
+        "stamp_ns": 1793824705634016046,
+        "source_age_s": 0.111117451
+      },
+      {
+        "receipt_monotonic_s": 3035.609142871,
+        "stamp_ns": 1793824705707105964,
+        "source_age_s": 0.152662812
+      },
+      {
+        "receipt_monotonic_s": 3035.715579705,
+        "stamp_ns": 1793824705776720612,
+        "source_age_s": 0.189484172
+      },
+      {
+        "receipt_monotonic_s": 3035.971860414,
+        "stamp_ns": 1793824706108949465,
+        "source_age_s": 0.113538589
+      },
+      {
+        "receipt_monotonic_s": 3036.079864727,
+        "stamp_ns": 1793824706167644786,
+        "source_age_s": 0.162843596
+      },
+      {
+        "receipt_monotonic_s": 3036.19026323,
+        "stamp_ns": 1793824706238637005,
+        "source_age_s": 0.202249104
+      },
+      {
+        "receipt_monotonic_s": 3036.439223913,
+        "stamp_ns": 1793824706569436454,
+        "source_age_s": 0.120413137
+      },
+      {
+        "receipt_monotonic_s": 3036.555410857,
+        "stamp_ns": 1793824706640374009,
+        "source_age_s": 0.165664861
+      },
+      {
+        "receipt_monotonic_s": 3036.654101805,
+        "stamp_ns": 1793824706717874393,
+        "source_age_s": 0.186852367
+      },
+      {
+        "receipt_monotonic_s": 3036.893556703,
+        "stamp_ns": 1793824707037143363,
+        "source_age_s": 0.107035382
+      },
+      {
+        "receipt_monotonic_s": 3036.998757952,
+        "stamp_ns": 1793824707109832570,
+        "source_age_s": 0.139550628
+      },
+      {
+        "receipt_monotonic_s": 3037.105409425,
+        "stamp_ns": 1793824707172694171,
+        "source_age_s": 0.183338999
+      },
+      {
+        "receipt_monotonic_s": 3037.370618681,
+        "stamp_ns": 1793824707507529768,
+        "source_age_s": 0.113714649
+      },
+      {
+        "receipt_monotonic_s": 3037.486860377,
+        "stamp_ns": 1793824707575742766,
+        "source_age_s": 0.161750253
+      },
+      {
+        "receipt_monotonic_s": 3037.59054736,
+        "stamp_ns": 1793824707658013836,
+        "source_age_s": 0.183158614
+      },
+      {
+        "receipt_monotonic_s": 3037.861444007,
+        "stamp_ns": 1793824708002895809,
+        "source_age_s": 0.10917361
+      },
+      {
+        "receipt_monotonic_s": 3037.975933078,
+        "stamp_ns": 1793824708106253443,
+        "source_age_s": 0.120302165
+      },
+      {
+        "receipt_monotonic_s": 3038.079417771,
+        "stamp_ns": 1793824708192929021,
+        "source_age_s": 0.137110745
+      },
+      {
+        "receipt_monotonic_s": 3038.361428107,
+        "stamp_ns": 1793824708504894026,
+        "source_age_s": 0.107167726
+      },
+      {
+        "receipt_monotonic_s": 3038.460867624,
+        "stamp_ns": 1793824708571565277,
+        "source_age_s": 0.139934542
+      },
+      {
+        "receipt_monotonic_s": 3038.559104007,
+        "stamp_ns": 1793824708641252232,
+        "source_age_s": 0.168477612
+      },
+      {
+        "receipt_monotonic_s": 3038.835768336,
+        "stamp_ns": 1793824708975021306,
+        "source_age_s": 0.111372723
+      },
+      {
+        "receipt_monotonic_s": 3038.943473605,
+        "stamp_ns": 1793824709035850264,
+        "source_age_s": 0.158248373
+      },
+      {
+        "receipt_monotonic_s": 3039.055202606,
+        "stamp_ns": 1793824709104905131,
+        "source_age_s": 0.20092326
+      },
+      {
+        "receipt_monotonic_s": 3039.292906911,
+        "stamp_ns": 1793824709435121574,
+        "source_age_s": 0.108410617
+      },
+      {
+        "receipt_monotonic_s": 3039.412595913,
+        "stamp_ns": 1793824709505903489,
+        "source_age_s": 0.15731472
+      },
+      {
+        "receipt_monotonic_s": 3039.526651436,
+        "stamp_ns": 1793824709581115516,
+        "source_age_s": 0.196158331
+      },
+      {
+        "receipt_monotonic_s": 3039.875916217,
+        "stamp_ns": 1793824710007361646,
+        "source_age_s": 0.119179317
+      },
+      {
+        "receipt_monotonic_s": 3039.995963553,
+        "stamp_ns": 1793824710103985360,
+        "source_age_s": 0.142602929
+      },
+      {
+        "receipt_monotonic_s": 3040.098092906,
+        "stamp_ns": 1793824710169202238,
+        "source_age_s": 0.179515588
+      },
+      {
+        "receipt_monotonic_s": 3040.377318672,
+        "stamp_ns": 1793824710510378815,
+        "source_age_s": 0.117566003
+      },
+      {
+        "receipt_monotonic_s": 3040.496495741,
+        "stamp_ns": 1793824710568852344,
+        "source_age_s": 0.178267115
+      },
+      {
+        "receipt_monotonic_s": 3040.594140685,
+        "stamp_ns": 1793824710637427060,
+        "source_age_s": 0.207336006
+      },
+      {
+        "receipt_monotonic_s": 3040.840459232,
+        "stamp_ns": 1793824710982264956,
+        "source_age_s": 0.108818274
+      },
+      {
+        "receipt_monotonic_s": 3040.946990421,
+        "stamp_ns": 1793824711052841285,
+        "source_age_s": 0.144775051
+      },
+      {
+        "receipt_monotonic_s": 3041.051527516,
+        "stamp_ns": 1793824711132866279,
+        "source_age_s": 0.169283753
+      },
+      {
+        "receipt_monotonic_s": 3041.389760055,
+        "stamp_ns": 1793824711517052460,
+        "source_age_s": 0.123343028
+      },
+      {
+        "receipt_monotonic_s": 3041.495847754,
+        "stamp_ns": 1793824711634919064,
+        "source_age_s": 0.111553577
+      },
+      {
+        "receipt_monotonic_s": 3041.828722446,
+        "stamp_ns": 1793824711968582791,
+        "source_age_s": 0.110765304
+      },
+      {
+        "receipt_monotonic_s": 3041.935774724,
+        "stamp_ns": 1793824712035093524,
+        "source_age_s": 0.151307057
+      },
+      {
+        "receipt_monotonic_s": 3042.03997252,
+        "stamp_ns": 1793824712099848692,
+        "source_age_s": 0.190745283
+      },
+      {
+        "receipt_monotonic_s": 3042.292713128,
+        "stamp_ns": 1793824712434408168,
+        "source_age_s": 0.108935021
+      },
+      {
+        "receipt_monotonic_s": 3042.402622694,
+        "stamp_ns": 1793824712496577581,
+        "source_age_s": 0.156670547
+      },
+      {
+        "receipt_monotonic_s": 3042.50794882,
+        "stamp_ns": 1793824712566454691,
+        "source_age_s": 0.192118558
+      },
+      {
+        "receipt_monotonic_s": 3042.77368136,
+        "stamp_ns": 1793824712908217776,
+        "source_age_s": 0.116089574
+      },
+      {
+        "receipt_monotonic_s": 3042.885772812,
+        "stamp_ns": 1793824712972878860,
+        "source_age_s": 0.163520291
+      },
+      {
+        "receipt_monotonic_s": 3043.001985908,
+        "stamp_ns": 1793824713029716452,
+        "source_age_s": 0.222893063
+      },
+      {
+        "receipt_monotonic_s": 3043.231459093,
+        "stamp_ns": 1793824713369407320,
+        "source_age_s": 0.11267753
+      },
+      {
+        "receipt_monotonic_s": 3043.350192259,
+        "stamp_ns": 1793824713429895452,
+        "source_age_s": 0.170922111
+      },
+      {
+        "receipt_monotonic_s": 3043.469074862,
+        "stamp_ns": 1793824713501866242,
+        "source_age_s": 0.217833554
+      },
+      {
+        "receipt_monotonic_s": 3043.714154773,
+        "stamp_ns": 1793824713840891846,
+        "source_age_s": 0.123889703
+      },
+      {
+        "receipt_monotonic_s": 3043.827702904,
+        "stamp_ns": 1793824713899979742,
+        "source_age_s": 0.178350039
+      },
+      {
+        "receipt_monotonic_s": 3043.930759607,
+        "stamp_ns": 1793824713962892826,
+        "source_age_s": 0.218492201
+      },
+      {
+        "receipt_monotonic_s": 3044.158402383,
+        "stamp_ns": 1793824714297796828,
+        "source_age_s": 0.111233391
+      },
+      {
+        "receipt_monotonic_s": 3044.267788982,
+        "stamp_ns": 1793824714389337042,
+        "source_age_s": 0.129074437
+      },
+      {
+        "receipt_monotonic_s": 3044.385236512,
+        "stamp_ns": 1793824714458686077,
+        "source_age_s": 0.177173724
+      },
+      {
+        "receipt_monotonic_s": 3044.632183994,
+        "stamp_ns": 1793824714772716528,
+        "source_age_s": 0.110095373
+      },
+      {
+        "receipt_monotonic_s": 3044.739322849,
+        "stamp_ns": 1793824714834730291,
+        "source_age_s": 0.155218809
+      },
+      {
+        "receipt_monotonic_s": 3044.841780035,
+        "stamp_ns": 1793824714894775712,
+        "source_age_s": 0.197625579
+      },
+      {
+        "receipt_monotonic_s": 3045.09089902,
+        "stamp_ns": 1793824715228489009,
+        "source_age_s": 0.1130361
+      },
+      {
+        "receipt_monotonic_s": 3045.210581517,
+        "stamp_ns": 1793824715316893832,
+        "source_age_s": 0.144313445
+      },
+      {
+        "receipt_monotonic_s": 3045.3224201,
+        "stamp_ns": 1793824715371432676,
+        "source_age_s": 0.201612988
+      },
+      {
+        "receipt_monotonic_s": 3045.529468849,
+        "stamp_ns": 1793824715656997455,
+        "source_age_s": 0.123098071
+      },
+      {
+        "receipt_monotonic_s": 3045.645560621,
+        "stamp_ns": 1793824715714346944,
+        "source_age_s": 0.18183813
+      },
+      {
+        "receipt_monotonic_s": 3046.14279358,
+        "stamp_ns": 1793824716282381733,
+        "source_age_s": 0.111035187
+      },
+      {
+        "receipt_monotonic_s": 3046.54466163,
+        "stamp_ns": 1793824716682164272,
+        "source_age_s": 0.113119345
+      },
+      {
+        "receipt_monotonic_s": 3046.660800239,
+        "stamp_ns": 1793824716769864059,
+        "source_age_s": 0.14156251
+      },
+      {
+        "receipt_monotonic_s": 3046.76922117,
+        "stamp_ns": 1793824716830927147,
+        "source_age_s": 0.188918582
+      },
+      {
+        "receipt_monotonic_s": 3047.062855984,
+        "stamp_ns": 1793824717185056310,
+        "source_age_s": 0.128422139
+      },
+      {
+        "receipt_monotonic_s": 3047.167406171,
+        "stamp_ns": 1793824717298790354,
+        "source_age_s": 0.119238158
+      },
+      {
+        "receipt_monotonic_s": 3047.508625333,
+        "stamp_ns": 1793824717645828317,
+        "source_age_s": 0.11342314
+      },
+      {
+        "receipt_monotonic_s": 3047.619771461,
+        "stamp_ns": 1793824717716933669,
+        "source_age_s": 0.153459872
+      },
+      {
+        "receipt_monotonic_s": 3047.727330539,
+        "stamp_ns": 1793824717766918650,
+        "source_age_s": 0.211034422
+      },
+      {
+        "receipt_monotonic_s": 3047.959418353,
+        "stamp_ns": 1793824718096199341,
+        "source_age_s": 0.113841618
+      },
+      {
+        "receipt_monotonic_s": 3048.075749437,
+        "stamp_ns": 1793824718187643763,
+        "source_age_s": 0.138730278
+      },
+      {
+        "receipt_monotonic_s": 3048.19036572,
+        "stamp_ns": 1793824718235591417,
+        "source_age_s": 0.205396046
+      },
+      {
+        "receipt_monotonic_s": 3048.423391839,
+        "stamp_ns": 1793824718562787811,
+        "source_age_s": 0.11122818
+      },
+      {
+        "receipt_monotonic_s": 3048.538717999,
+        "stamp_ns": 1793824718636686119,
+        "source_age_s": 0.152657401
+      },
+      {
+        "receipt_monotonic_s": 3048.649746695,
+        "stamp_ns": 1793824718717866521,
+        "source_age_s": 0.182504823
+      },
+      {
+        "receipt_monotonic_s": 3048.886900042,
+        "stamp_ns": 1793824719033671883,
+        "source_age_s": 0.103867907
+      },
+      {
+        "receipt_monotonic_s": 3048.993459173,
+        "stamp_ns": 1793824719106193480,
+        "source_age_s": 0.137903398
+      },
+      {
+        "receipt_monotonic_s": 3049.092546455,
+        "stamp_ns": 1793824719162396129,
+        "source_age_s": 0.180772773
+      },
+      {
+        "receipt_monotonic_s": 3049.353594942,
+        "stamp_ns": 1793824719501717162,
+        "source_age_s": 0.102503696
+      },
+      {
+        "receipt_monotonic_s": 3049.463802749,
+        "stamp_ns": 1793824719564762939,
+        "source_age_s": 0.149661922
+      },
+      {
+        "receipt_monotonic_s": 3049.572233341,
+        "stamp_ns": 1793824719625543282,
+        "source_age_s": 0.197312255
+      },
+      {
+        "receipt_monotonic_s": 3049.821247644,
+        "stamp_ns": 1793824719964253570,
+        "source_age_s": 0.107617432
+      },
+      {
+        "receipt_monotonic_s": 3049.932311933,
+        "stamp_ns": 1793824720051944753,
+        "source_age_s": 0.130994958
+      },
+      {
+        "receipt_monotonic_s": 3050.036682539,
+        "stamp_ns": 1793824720097881298,
+        "source_age_s": 0.189433874
+      },
+      {
+        "receipt_monotonic_s": 3050.289617553,
+        "stamp_ns": 1793824720431177515,
+        "source_age_s": 0.109066655
+      },
+      {
+        "receipt_monotonic_s": 3050.400691036,
+        "stamp_ns": 1793824720502658243,
+        "source_age_s": 0.148658382
+      },
+      {
+        "receipt_monotonic_s": 3050.507303646,
+        "stamp_ns": 1793824720567319644,
+        "source_age_s": 0.190607157
+      },
+      {
+        "receipt_monotonic_s": 3050.747484434,
+        "stamp_ns": 1793824720893948899,
+        "source_age_s": 0.104158062
+      },
+      {
+        "receipt_monotonic_s": 3050.866889981,
+        "stamp_ns": 1793824720966308256,
+        "source_age_s": 0.151208785
+      },
+      {
+        "receipt_monotonic_s": 3050.972508992,
+        "stamp_ns": 1793824721029409305,
+        "source_age_s": 0.193721965
+      }
+    ],
+    "people": []
+  },
+  "matched_stage_delays": {
+    "camera_to_yolo": {
+      "matched_samples": 186,
+      "min_s": 0.09787795099964569,
+      "max_s": 0.24570144400013305
+    },
+    "yolo_to_people": {
+      "matched_samples": 0,
+      "min_s": null,
+      "max_s": null
+    }
+  }
+}

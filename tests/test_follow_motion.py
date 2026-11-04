@@ -25,7 +25,8 @@ class FollowMotionArgumentsTest(unittest.TestCase):
         self.assertFalse(hasattr(args, "duration"))
         self.assertFalse(hasattr(args, "timeout"))
         self.assertEqual(args.minimum_confidence, 0.65)
-        self.assertEqual(args.max_forward_speed, 0.03)
+        self.assertEqual(args.target_height_ratio, 0.75)
+        self.assertEqual(args.max_forward_speed, 0.10)
 
     def test_configured_speed_is_accepted_without_enabling_motion(self):
         for maximum in ("0.01", "0.03", "0.05", "0.1"):

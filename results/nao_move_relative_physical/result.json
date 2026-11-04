@@ -1,0 +1,24 @@
+{
+  "started_utc": "2026-09-22T21:25:59.842994+00:00",
+  "robot": "NAO",
+  "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+  "move_service": "/nao/move_to",
+  "odometry_topic": "/nao/odom",
+  "request": {
+    "x_m": 0.0,
+    "y_m": 0.0,
+    "theta_rad": 0.1
+  },
+  "technical_success": true,
+  "observer_confirmation": true,
+  "released": true,
+  "response": {
+    "success": true,
+    "provider": "hri_naoqi_providers/NaoqiMoveRelative",
+    "message": "motion_completed",
+    "achieved_x_m": -0.0037290276677659625,
+    "achieved_y_m": 0.002546811826844717,
+    "achieved_theta_rad": 0.09778639674186715
+  },
+  "passed": true
+}

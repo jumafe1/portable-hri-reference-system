@@ -4,7 +4,8 @@ Outputs need the session's explicit motion opt-in before actuation. Box size is 
 proxy, NOT metric distance or collision clearance. This controlled experiment
 assumes exactly one participant; the sole eligible detection is the target.
 No identity association is attempted, even when tracking IDs are supplied.
-After acquiring a target, missing/ambiguous/invalid input requires a new Controller.
+Missing/ambiguous people pause proposals and restart acquisition. Invalid input
+after acquisition still requires a new Controller.
 The turn sign assumes a forward-facing camera aligned with the robot base;
 Optional pitch-only camera control supplies a calibrated angular-size proxy;
 it does not estimate metric range or compensate camera translation/extrinsics.
@@ -19,9 +20,9 @@ class Config:
     image_width: int
     image_height: int
     minimum_confidence: float = 0.65
-    target_height_ratio: float = 0.6
+    target_height_ratio: float = 0.75
     max_age: float = 0.75
-    max_forward_speed: float = 0.03
+    max_forward_speed: float = 0.10
 
     def __post_init__(self) -> None:
         for value in (self.image_width, self.image_height):
@@ -60,7 +61,7 @@ def _finite(value: object) -> bool:
 
 
 class Controller:
-    """Require three consecutive observations; fail closed on target loss.
+    """Require three consecutive unique observations, including after a pause.
 
     ``now`` must be monotonic receipt time. The caller must independently reject
     stale/repeated image stamps: receipt timestamps cannot establish sensor age.
@@ -87,6 +88,19 @@ class Controller:
         if self._latched is None:
             self._latched = reason or "stopped"
         return self._zero(self._latched)
+
+    def pause_stale(self) -> Decision:
+        """Discard proposals and require three observations after a stream gap.
+
+        The session owns image timestamp checks
+        and zero-command acknowledgement. This cannot clear a permanent fault
+        or forget that a target was acquired (invalid input still latches).
+        """
+        if self._latched is not None:
+            return self._zero(self._latched)
+        self._count = 0
+        self._last_update = None
+        return self._zero("waiting_fresh_images")
 
     def _zero(self, reason: str) -> Decision:
         self._decision = Decision(0.0, 0.0, reason, self._locked)
@@ -124,12 +138,19 @@ class Controller:
             return False
         if not 0 <= person.confidence <= 1 or person.width <= 0 or person.height <= 0:
             return False
+        # Float32 xyxy -> center/size conversion can reconstruct an edge a
+        # few ulps outside the image. Such boxes remain clipped (zero motion),
+        # rather than becoming fatal invalid detections. Do not clamp the data.
+        ex, ey = self._edge_tolerance()
         return (
-            person.center_x - person.width / 2 >= 0
-            and person.center_y - person.height / 2 >= 0
-            and person.center_x + person.width / 2 <= self.config.image_width
-            and person.center_y + person.height / 2 <= self.config.image_height
+            person.center_x - person.width / 2 >= -ex
+            and person.center_y - person.height / 2 >= -ey
+            and person.center_x + person.width / 2 <= self.config.image_width + ex
+            and person.center_y + person.height / 2 <= self.config.image_height + ey
         )
+
+    def _edge_tolerance(self):
+        return self.config.image_width * 2**-22, self.config.image_height * 2**-22
 
     def update(self, people: list[Person], now: float, *, height_ratio_override=None) -> Decision:
         """Accept one fresh image's people; do not concatenate robot streams."""
@@ -149,21 +170,21 @@ class Controller:
         if not isinstance(people, list) or any(not self._valid_person(p) for p in people):
             return self._reject("invalid_detection")
         eligible = [p for p in people if p.confidence >= self.config.minimum_confidence]
-        if not eligible:
-            return self._reject("person_missing")
         if len(eligible) != 1:
-            return self._reject("ambiguous_people")
+            self._count = 0
+            return self._zero("person_missing" if not eligible else "ambiguous_people")
         person = eligible[0]
         self._count += 1
         if self._count < 3:
             return self._zero("acquiring_target")
         self._locked = True
         height_ratio = person.height / self.config.image_height
+        ex, ey = self._edge_tolerance()
         clipped = (
-            person.center_x - person.width / 2 <= 0
-            or person.center_y - person.height / 2 <= 0
-            or person.center_x + person.width / 2 >= self.config.image_width
-            or person.center_y + person.height / 2 >= self.config.image_height
+            person.center_x - person.width / 2 <= ex
+            or person.center_y - person.height / 2 <= ey
+            or person.center_x + person.width / 2 >= self.config.image_width - ex
+            or person.center_y + person.height / 2 >= self.config.image_height - ey
         )
         if clipped:
             return self._zero("clipped_detection")
@@ -181,8 +202,8 @@ class Controller:
             return self._decision
         vx = 0.0
         if abs(error) <= 0.15 and height_ratio < self.config.target_height_ratio - 0.05:
-            # Scale the response as well as its ceiling; default preserves the
-            # original gain. Apparent size remains a proxy, not metric distance.
+            # Scale the response as well as its ceiling; 0.03 m/s preserves the
+            # historical gain. Apparent size remains a proxy, not metric distance.
             gain = 0.10 * (self.config.max_forward_speed / 0.03)
             vx = min(self.config.max_forward_speed, gain * (self.config.target_height_ratio - height_ratio))
         reason = "preview_following" if vx != 0 or wz != 0 else "target_in_visual_deadband"

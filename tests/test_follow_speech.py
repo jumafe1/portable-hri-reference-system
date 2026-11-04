@@ -311,6 +311,8 @@ class CleanupTest(unittest.TestCase):
         session = MagicMock()
         events = []
         session.frames = session.tracked_frames = session.samples = 0
+        session.image_recoveries = 0
+        session.person_recoveries = 0
         session.camera = None
         session.speech.requested, session.speech.released = True, False
         session.speech.status, session.speech.transcripts_received = "ready", 2

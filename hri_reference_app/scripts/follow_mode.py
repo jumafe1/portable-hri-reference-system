@@ -31,8 +31,8 @@ def parse_args(argv=None):
     parser.add_argument("--image-height", type=int, required=True)
     parser.add_argument("--expected-frame", required=True)
     parser.add_argument("--minimum-confidence", type=float, default=0.65)
-    parser.add_argument("--target-height-ratio", type=float, default=0.6)
-    parser.add_argument("--max-forward-speed", type=float, default=0.03,
+    parser.add_argument("--target-height-ratio", type=float, default=0.75)
+    parser.add_argument("--max-forward-speed", type=float, default=0.10,
                         help="Forward speed ceiling in m/s (0, 0.10]; also scales proportional response.")
     parser.add_argument("--enable-motion", action="store_true")
     parser.add_argument("--orient-camera", action="store_true",
@@ -251,5 +251,7 @@ def run(args):
         "frames_received": session.frames if session else 0,
         "tracked_frames": session.tracked_frames if session else 0,
         "preview_samples": session.samples if session else 0,
+        "image_recoveries": session.image_recoveries if session else 0,
+        "person_recoveries": session.person_recoveries if session else 0,
     }, ensure_ascii=False))
     return 0 if outcome == APP_SUCCEEDED else 1

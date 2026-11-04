@@ -1,0 +1,380 @@
+{
+  "date": "2026-11-04",
+  "physical_test_performed": false,
+  "repositories": {
+    "yolo_ros": "c6d29ce65da555b125517db6ac53729320422b2b",
+    "portable-hri-reference-system": "15178b0e12c30c6aa6af881037431b45ace89202",
+    "portable-hri-providers": "31a386190c001a0432c9d320685c02a675b430f2",
+    "portable-hri-interfaces": "a23a11e957178998a46f2e2784f0ba5a55fc5c68",
+    "naoqi_utilities_msgs": "00831e4c4814dd77c036940948d22a2c8f33f6ef",
+    "capabilities2": "67606acbf2fe39e828b03985a2f6881b909c1091"
+  },
+  "instructions": {
+    "AGENTS.md_found": false,
+    "architecture": "YASMIN orchestrates Capabilities2; application uses portable /hri contracts; YOLO and driver remain external."
+  },
+  "paths": {
+    "workspace": "/home/robotica/Documents/portable_hri_ws",
+    "resolved_hri_prefix": "/home/robotica/Documents/portable_hri_ws/install",
+    "inherited_driver_prefix": "/home/robotica/ros2_naoqi_ws/install",
+    "documented_driver_prefix": "/home/robotica/Documents/naoqi/naoqi_ws/install",
+    "yolo_interpreter": "/home/robotica/Documents/portable_hri_ws/src/yolo_ros/yolo_ros/.venv/bin/python",
+    "app_install": "symlinks to current source"
+  },
+  "versions": {
+    "ros": "jazzy",
+    "ultralytics": "8.4.6",
+    "torch_yolo_venv": "2.8.0",
+    "numpy_yolo_venv": "1.26.4"
+  },
+  "findings": [
+    "Stale image stops occur in physical-source logs on both Oct 19 and Oct 21. The 0.75 s bound and ambiguity/geometry checks predate optional camera/speech integration.",
+    "Optional orientation and transcription default to false. No basic controller regression from their disabled path was identified.",
+    "Reproduced float32 border conversion: top 16.010000228881836, bottom 240 -> center 128.0050048828125, height 223.99000549316406 -> reconstructed bottom 240.00000762939453. Previously latched invalid_detection after acquisition.",
+    "Fix treats only float32-scale boundary roundoff as clipped_detection (zero on both axes); real out-of-frame geometry, stale frames, and ambiguity still stop as before.",
+    "Historical logs lack boxes and candidate counts: the rounding defect is reproduced in software but is not proven to explain each historical invalid_detection. Ambiguity may be multiple people or detector false positives; cannot distinguish from retained logs.",
+    "Added bounded incoming-frame diagnostics including rejected timestamps, source age, receipt gap, box geometry and candidate counts; preserve first latched fault.",
+    "External dependency commits match portable_hri.repos. HRI prefixes resolve to this workspace after sourcing install/setup.bash. Source and installed app scripts are linked.",
+    "Shell initially inherits an older driver workspace; follow documented environment order before hardware tests. YOLO uses its own virtualenv; missing ultralytics in system Python is not a missing dependency for the installed YOLO entry point."
+  ],
+  "validation": {
+    "unit_tests": {
+      "passed": 183,
+      "log": "/tmp/follow-after.log",
+      "command": "ROS_LOG_DIR=/tmp/portable-hri-audit-unit-logs python3 -m unittest discover -s tests -p test_follow*.py"
+    },
+    "integration": {
+      "status": "blocked_before_node_creation",
+      "reason": "CycloneDDS failed to enumerate interfaces for udp inside execution sandbox",
+      "log": "/tmp/follow-integration.log",
+      "domain": 181,
+      "localhost_only": true
+    },
+    "initial_unit_attempt": "4 environment errors writing read-only ~/.ros/log; rerun with ROS_LOG_DIR in /tmp passed.",
+    "build": {
+      "passed": true,
+      "package": "hri_reference_app",
+      "command": "colcon build --packages-select hri_reference_app --symlink-install",
+      "log": "/tmp/follow-build.log"
+    },
+    "diff_check": "passed",
+    "baseline_comparison": "The same float32-derived box latches invalid_detection in c64fee0 (Oct 19); patched controller returns clipped_detection with zero velocity and no latch."
+  },
+  "historical_log_events": [
+    {
+      "path": "/home/robotica/.ros/log/python3_11714_1792453358351.log",
+      "time_utc": "2026-10-19T23:43:15.599747+00:00",
+      "reason": "stale_or_future_image",
+      "locked": true,
+      "source_age_at_log_s": 0.775563,
+      "receipt_age_s": 0.6441004970001813
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_11832_1792453414822.log",
+      "time_utc": "2026-10-19T23:44:27.981582+00:00",
+      "reason": "stale_or_future_image",
+      "locked": true,
+      "source_age_at_log_s": 0.754819,
+      "receipt_age_s": 0.5535214900010033
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_13589_1792454790960.log",
+      "time_utc": "2026-10-20T00:08:11.079856+00:00",
+      "reason": "stale_or_future_image",
+      "locked": true,
+      "source_age_at_log_s": 0.790986,
+      "receipt_age_s": 0.6669190279990289
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_13821_1792455180162.log",
+      "time_utc": "2026-10-20T00:13:27.545354+00:00",
+      "reason": "stale_or_future_image",
+      "locked": true,
+      "source_age_at_log_s": 0.773051,
+      "receipt_age_s": 0.641918944000281
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_16540_1792609598924.log",
+      "time_utc": "2026-10-21T19:06:44.727576+00:00",
+      "reason": "stale_or_future_image",
+      "locked": false,
+      "source_age_at_log_s": 0.796185,
+      "receipt_age_s": 0.6874650440004189
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_17072_1792609981005.log",
+      "time_utc": "2026-10-21T19:13:12.522570+00:00",
+      "reason": "stale_or_future_image",
+      "locked": true,
+      "source_age_at_log_s": 0.761976,
+      "receipt_age_s": 0.552630116999353
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_17483_1792610413518.log",
+      "time_utc": "2026-10-21T19:20:17.051851+00:00",
+      "reason": "ambiguous_people",
+      "locked": true,
+      "source_age_at_log_s": 0.553688,
+      "receipt_age_s": 0.36370630900000833
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_17955_1792611035621.log",
+      "time_utc": "2026-10-21T19:30:37.546494+00:00",
+      "reason": "ambiguous_people",
+      "locked": false,
+      "source_age_at_log_s": 0.461351,
+      "receipt_age_s": 0.33155581600021833
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_18556_1792611437833.log",
+      "time_utc": "2026-10-21T19:37:19.843021+00:00",
+      "reason": "ambiguous_people",
+      "locked": false,
+      "source_age_at_log_s": 0.224988,
+      "receipt_age_s": 0.0839629590000186
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_28843_1792613844949.log",
+      "time_utc": "2026-10-21T20:17:26.987776+00:00",
+      "reason": "ambiguous_people",
+      "locked": false,
+      "source_age_at_log_s": 0.290729,
+      "receipt_age_s": 0.10872790699977486
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_28921_1792613857888.log",
+      "time_utc": "2026-10-21T20:17:39.844447+00:00",
+      "reason": "ambiguous_people",
+      "locked": false,
+      "source_age_at_log_s": 0.170278,
+      "receipt_age_s": 0.05026986199845851
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_29445_1792614211097.log",
+      "time_utc": "2026-10-21T20:23:45.319476+00:00",
+      "reason": "ambiguous_people",
+      "locked": true,
+      "source_age_at_log_s": 0.151129,
+      "receipt_age_s": 0.029364129999521538
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_29553_1792614324922.log",
+      "time_utc": "2026-10-21T20:25:30.467291+00:00",
+      "reason": "invalid_detection",
+      "locked": true,
+      "source_age_at_log_s": 0.163942,
+      "receipt_age_s": 0.010625787001117715
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_29634_1792614371040.log",
+      "time_utc": "2026-10-21T20:26:15.784843+00:00",
+      "reason": "invalid_detection",
+      "locked": true,
+      "source_age_at_log_s": 0.156523,
+      "receipt_age_s": 0.020181661000606255
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_29714_1792614399686.log",
+      "time_utc": "2026-10-21T20:26:42.106425+00:00",
+      "reason": "invalid_detection",
+      "locked": true,
+      "source_age_at_log_s": 0.250695,
+      "receipt_age_s": 0.11269560199980333
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_29790_1792614421952.log",
+      "time_utc": "2026-10-21T20:27:10.621433+00:00",
+      "reason": "ambiguous_people",
+      "locked": true,
+      "source_age_at_log_s": 0.179519,
+      "receipt_age_s": 0.005155093000212219
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_29883_1792614565641.log",
+      "time_utc": "2026-10-21T20:29:28.653427+00:00",
+      "reason": "stale_or_future_image",
+      "locked": true,
+      "source_age_at_log_s": 0.762627,
+      "receipt_age_s": 0.6371828589999495
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_29961_1792614584569.log",
+      "time_utc": "2026-10-21T20:29:48.145187+00:00",
+      "reason": "invalid_detection",
+      "locked": true,
+      "source_age_at_log_s": 0.148587,
+      "receipt_age_s": 0.01773925199995574
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_30045_1792614605451.log",
+      "time_utc": "2026-10-21T20:30:08.626658+00:00",
+      "reason": "stale_or_future_image",
+      "locked": true,
+      "source_age_at_log_s": 0.758456,
+      "receipt_age_s": 0.5859933819992875
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_30128_1792614627508.log",
+      "time_utc": "2026-10-21T20:30:30.082202+00:00",
+      "reason": "invalid_detection",
+      "locked": true,
+      "source_age_at_log_s": 0.129308,
+      "receipt_age_s": 0.0020074139993084827
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_30240_1792614805538.log",
+      "time_utc": "2026-10-21T20:33:40.770056+00:00",
+      "reason": "invalid_detection",
+      "locked": true,
+      "source_age_at_log_s": 0.16203,
+      "receipt_age_s": 0.0292584849994455
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_30336_1792614845243.log",
+      "time_utc": "2026-10-21T20:34:08.988953+00:00",
+      "reason": "stale_or_future_image",
+      "locked": false,
+      "source_age_at_log_s": 0.760692,
+      "receipt_age_s": 0.6479605270014872
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_30417_1792614856791.log",
+      "time_utc": "2026-10-21T20:34:21.442428+00:00",
+      "reason": "stale_or_future_image",
+      "locked": true,
+      "source_age_at_log_s": 0.79401,
+      "receipt_age_s": 0.6725284499989357
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_30524_1792615045694.log",
+      "time_utc": "2026-10-21T20:37:29.160820+00:00",
+      "reason": "invalid_detection",
+      "locked": true,
+      "source_age_at_log_s": 0.144019,
+      "receipt_age_s": 0.02581651999935275
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_7456_1792447951155.log",
+      "time_utc": "2026-10-19T22:12:33.721893+00:00",
+      "reason": "stale_or_future_image",
+      "locked": true,
+      "source_age_at_log_s": 0.772036,
+      "receipt_age_s": 0.2702634670004045
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_8339_1792448892547.log",
+      "time_utc": "2026-10-19T22:28:21.899846+00:00",
+      "reason": "stale_or_future_image",
+      "locked": true,
+      "source_age_at_log_s": 0.779609,
+      "receipt_age_s": 0.6151180150000073
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_8429_1792448913713.log",
+      "time_utc": "2026-10-19T22:29:28.611977+00:00",
+      "reason": "stale_or_future_image",
+      "locked": true,
+      "source_age_at_log_s": 0.757186,
+      "receipt_age_s": 0.6014251759997933
+    }
+  ],
+  "remaining": [
+    "Run ROS integration from normal terminal with localhost-only dedicated domain, without driver.",
+    "Run preview with real camera/YOLO and inspect the new diagnostics.",
+    "Validate bounded supervised NAO follow and actual stop; keep orientation and speech disabled initially."
+  ],
+  "followup_physical_logs": [
+    {
+      "path": "/home/robotica/.ros/log/python3_16029_1793824105573.log",
+      "reason": "stale_or_future_image",
+      "source_age_s": 0.7906043,
+      "receipt_age_s": 0.6164755770000738,
+      "age_at_receipt_s": 0.174094898,
+      "eligible_count": 1,
+      "invalid_count": 0
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_16124_1793824134985.log",
+      "reason": "stale_or_future_image",
+      "source_age_s": 0.783837401,
+      "receipt_age_s": 0.657722620000186,
+      "age_at_receipt_s": 0.12609907,
+      "eligible_count": 1,
+      "invalid_count": 0
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_16212_1793824174398.log",
+      "reason": "stale_or_future_image",
+      "source_age_s": 0.773213835,
+      "receipt_age_s": 0.6646298800001205,
+      "age_at_receipt_s": 0.108579781,
+      "eligible_count": 1,
+      "invalid_count": 0
+    },
+    {
+      "path": "/home/robotica/.ros/log/python3_16294_1793824199045.log",
+      "reason": "stale_or_future_image",
+      "source_age_s": 0.792362782,
+      "receipt_age_s": 0.6726770089999263,
+      "age_at_receipt_s": 0.119685128,
+      "eligible_count": 1,
+      "invalid_count": 0
+    }
+  ],
+  "followup_status": {
+    "speed_default_m_s": 0.1,
+    "requested_by_user": true,
+    "unit_tests_passed": 184,
+    "log": "/tmp/hri-speed-unit.log",
+    "physical_success_verified": false,
+    "remaining_issue": "Four user-supplied physical-source runs end on source age >0.75 s; last frames arrived at 0.109\u20130.174 s age then no accepted update for 0.616\u20130.673 s. Need concurrent upstream observation to localize the pause.",
+    "timing_tool": "tests/follow_stream_diagnostic.py",
+    "integration_probe_cancel_fix": "Deferred at user request; no changes made to unified_hri_follow_probe.py.",
+    "target_height_ratio_default": 0.75
+  },
+  "stream_baseline": {
+    "source": "/tmp/hri-stream-timing-7syvq13n/result.json",
+    "preserved": "follow_stream_baseline_20261104.json",
+    "camera_samples": 189,
+    "yolo_samples": 186,
+    "people_samples": 0,
+    "camera_max_receipt_gap_s": 0.5706049760001406,
+    "yolo_max_receipt_gap_s": 0.49723295900002995,
+    "yolo_max_age_before_next_received_detection_s": 0.67907108899999,
+    "observer_max_spin_gap_s": 0.06226887100001477,
+    "interpretation": "Baseline without active DetectPeople. Observed YOLO freshness approached within 0.071 s of the 0.75 s stop threshold, but no crossing observed between received frames. Concurrent preview measurement needed to distinguish upstream pauses from provider/application delays."
+  },
+  "stream_with_preview": {
+    "source": "/tmp/hri-stream-timing-ck18urg6/result.json",
+    "preserved": "follow_stream_with_preview_20261104.json",
+    "camera_max_receipt_gap_s": 0.6838751569998749,
+    "matched_yolo_to_people_delay_max_s": 0.004876082999999198,
+    "preview_end_reason": "ambiguous_people",
+    "preview_end_confidences": [
+      0.8243281245231628,
+      0.6664351224899292
+    ],
+    "user_observation": "Second person seated behind the participant was visible. NAO connected via Wi-Fi.",
+    "interpretation": "Ambiguity is expected under the declared single-person assumption. Two intervals outside the preview active window reached last-detection ages 0.76975 and 0.79201 s before the next YOLO result. Pauses were observable upstream of HRI; Wi-Fi vs robot/driver scheduling has not been isolated.",
+    "camera_timestamp_limit": "Inspected driver stamps images after getImageRemote with helpers::Time::now(), not the robot capture timestamp; small observed camera source ages do not prove low sensor-to-host latency."
+  },
+  "single_target_preview": {
+    "source": "/tmp/hri-stream-timing-woe21dfm/result.json",
+    "preserved": "follow_stream_single_target_20261104.json",
+    "application_log": "/home/robotica/.ros/log/python3_19892_1793825271342.log",
+    "observed_stamp_span_s": 58.766481981,
+    "frames_received": 356,
+    "tracked_frames": 353,
+    "final_reason": "ambiguous_people",
+    "final_confidences": [
+      0.8921789526939392,
+      0.6871249079704285
+    ],
+    "user_observation": "User believes someone passed behind them just as the process stopped; tentative observation, not image-confirmed.",
+    "commands_sent": 0,
+    "released": true,
+    "max_matched_yolo_to_people_delay_s": 0.007914269999673706,
+    "max_observed_people_age_before_next_s": 0.7384676440001385,
+    "interpretation": "Preview operated for about 59 s then stopped as specified on two eligible detections. No stale-image stop in this run; freshness margin was narrow, so prior intermittent gaps remain unresolved. No physical following or physical stopping validated."
+  }
+}

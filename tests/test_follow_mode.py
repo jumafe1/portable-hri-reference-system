@@ -25,6 +25,8 @@ class FollowModeCleanupTest(unittest.TestCase):
         session.frames = 10
         session.tracked_frames = 8
         session.samples = 20
+        session.image_recoveries = 0
+        session.person_recoveries = 0
         session.close_perception.side_effect = cleanup_error
         session.finish_preview.side_effect = diagnostic_error
         session.bond.shutdown.side_effect = bond_error

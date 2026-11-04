@@ -1,6 +1,7 @@
 """ROS visual-follow session. Motion endpoints exist only after explicit opt-in."""
 
 import json
+import math
 import threading
 import time
 
@@ -15,7 +16,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 from std_msgs.msg import String
 from yasmin_ros.basic_outcomes import ABORT, SUCCEED
 
-from follow_controller import Config, Controller, Person
+from follow_controller import Config, Controller, Decision, Person
 from follow_camera import FollowCamera
 from follow_motion import FollowMotion
 from follow_speech import FollowSpeech
@@ -35,7 +36,7 @@ class FollowSession:
             image_width=args.image_width, image_height=args.image_height,
             minimum_confidence=args.minimum_confidence,
             target_height_ratio=args.target_height_ratio,
-            max_forward_speed=getattr(args, "max_forward_speed", 0.03),
+            max_forward_speed=getattr(args, "max_forward_speed", 0.10),
         ))
         self.frames = 0
         self.finished = False
@@ -43,6 +44,18 @@ class FollowSession:
         self.samples = 0
         self.latest_stamp = 0
         self.latest_received = 0.0
+        self.last_seen_stamp = 0
+        self.image_recovery_started = None
+        self.image_recovery_stamp = 0
+        self.image_recovery_frames = 0
+        self.image_recovery_zero_sent = None
+        self.image_recoveries = 0
+        self.person_wait_reason = ""
+        self.person_wait_stamp = 0
+        self.person_wait_frames = 0
+        self.person_wait_zero_sent = None
+        self.person_recoveries = 0
+        self.perception_diagnostic = None
         self.last_print = 0.0
         self.last_reason = ""
         self.bond = None
@@ -112,13 +125,41 @@ class FollowSession:
     def on_frame(self, frame):
         stamp = frame.header.stamp.sec * 1_000_000_000 + frame.header.stamp.nanosec
         with self.lock:
-            if self.finished:
+            if self.finished or self.controller.halted:
                 return
             # Serialize controller time with observe/tick. A callback waiting
             # for this lock must not submit a timestamp older than a timer tick.
             now = time.monotonic()
             age = (self.node.get_clock().now().nanoseconds - stamp) / 1e9
             self.frames += 1
+            # Retain the actual incoming frame, including rejected headers. The
+            # accepted source stamp alone cannot explain a failed new frame.
+            people = [Person(
+                confidence=p.confidence, tracking_id=p.tracking_id,
+                center_x=p.center_x, center_y=p.center_y,
+                width=p.width, height=p.height,
+            ) for p in frame.people]
+            valid = [self.controller._valid_person(p) for p in people]
+            def number(value):
+                return value if math.isfinite(value) else str(value)
+            self.perception_diagnostic = {
+                "frame_id": frame.header.frame_id, "provider": frame.provider,
+                "stamp_ns": stamp, "age_at_receipt_s": age,
+                "receipt_gap_s": now - self.latest_received if self.latest_received else None,
+                "people_count": len(people),
+                "eligible_count": sum(ok and p.confidence >= self.controller.config.minimum_confidence
+                                      for p, ok in zip(people, valid)),
+                "invalid_count": valid.count(False),
+                "image_width": self.controller.config.image_width,
+                "image_height": self.controller.config.image_height,
+                "minimum_confidence": self.controller.config.minimum_confidence,
+                "people": [dict(
+                    confidence=number(p.confidence),
+                    center_x=number(p.center_x), center_y=number(p.center_y),
+                    width=number(p.width), height=number(p.height), valid=ok,
+                ) for p, ok in list(zip(people, valid))[:10]],
+                "people_truncated": len(people) > 10,
+            }
             failure = ""
             if frame.provider != PROVIDER:
                 failure = "unexpected_people_provider"
@@ -126,24 +167,53 @@ class FollowSession:
                 failure = "unexpected_camera_frame"
             elif stamp <= 0 or not 0 <= frame.header.stamp.nanosec < 1_000_000_000:
                 failure = "invalid_image_timestamp"
-            elif age > 0.75 or age < -0.1:
+            elif age < -0.1:
                 failure = "stale_or_future_image"
-            elif stamp <= self.latest_stamp:
+            elif stamp <= max(self.latest_stamp, self.last_seen_stamp):
                 failure = "non_increasing_image_timestamp"
             if failure:
                 self.controller.stop(failure)
                 return
+            self.last_seen_stamp = stamp
+            # Check the previous observation BEFORE overwriting it: a callback
+            # arriving between control ticks must not hide a freshness gap.
+            self._check_image_freshness(now)
+            if self.controller.halted:
+                return
+            if age > self.controller.config.max_age:
+                self._pause_stale_image(now)
+                return
+            if self.image_recovery_started is not None and stamp <= self.image_recovery_stamp:
+                # Queued images predating the pause cannot re-arm movement.
+                return
             self.latest_stamp = stamp
             self.latest_received = now
-            people = [Person(
-                confidence=p.confidence, tracking_id=p.tracking_id,
-                center_x=p.center_x, center_y=p.center_y,
-                width=p.width, height=p.height,
-            ) for p in frame.people]
             camera = getattr(self, "camera", None)
             ratio = camera.process_frame(people, stamp) if camera else None
             decision = self.controller.update(people, now, height_ratio_override=ratio)
-            if decision.locked and not self.controller.halted:
+            if decision.reason in {"person_missing", "ambiguous_people"}:
+                if not self.person_wait_reason:
+                    self.person_wait_stamp = self.node.get_clock().now().nanoseconds
+                    self.person_wait_zero_sent = None
+                self.person_wait_reason = decision.reason
+                self.person_wait_frames = 0
+            elif self.person_wait_reason:
+                eligible = sum(ok and p.confidence >= self.controller.config.minimum_confidence
+                               for p, ok in zip(people, valid))
+                if (all(valid) and eligible == 1 and not self.controller.halted
+                        and stamp > self.person_wait_stamp):
+                    self.person_wait_frames = min(3, self.person_wait_frames + 1)
+                else:
+                    self.person_wait_frames = 0
+            if self.image_recovery_started is not None:
+                # A fresh empty/ambiguous frame proves that the image stream is
+                # back. The independent person gate still holds both axes zero.
+                if all(valid) and not self.controller.halted:
+                    self.image_recovery_frames = min(3, self.image_recovery_frames + 1)
+                else:
+                    self.image_recovery_frames = 0
+            if (decision.locked and not self.controller.halted
+                    and decision.reason not in {"person_missing", "ambiguous_people", "acquiring_target"}):
                 self.tracked_frames += 1
 
     def await_future(self, future, seconds):
@@ -186,6 +256,18 @@ class FollowSession:
             "source_frame": self.args.expected_frame,
             "source_stamp_ns": self.latest_stamp,
             "receipt_age_s": now - self.latest_received if self.latest_received else None,
+            "source_age_s": ((self.node.get_clock().now().nanoseconds - self.latest_stamp) / 1e9
+                             if self.latest_stamp else None),
+            "perception": getattr(self, "perception_diagnostic", None),
+            "image_recovery_active": self.image_recovery_started is not None,
+            "image_recovery_frames": self.image_recovery_frames,
+            "image_recovery_elapsed_s": (now - self.image_recovery_started
+                                         if self.image_recovery_started is not None else None),
+            "image_recoveries": self.image_recoveries,
+            "person_wait_active": bool(self.person_wait_reason),
+            "person_wait_reason": self.person_wait_reason,
+            "person_wait_frames": self.person_wait_frames,
+            "person_recoveries": self.person_recoveries,
             "distance_m": None,
             "camera_orientation_requested": getattr(self.args, "orient_camera", False),
             "camera_orientation_active": bool(self.camera and self.camera.active),
@@ -200,34 +282,92 @@ class FollowSession:
             self.node.get_logger().info(data)
             self.last_print, self.last_reason = now, decision.reason
 
+    def _pause_stale_image(self, now):
+        if self.controller.halted:
+            return
+        if self.image_recovery_started is None:
+            self.image_recovery_started = now
+            self.image_recovery_stamp = self.node.get_clock().now().nanoseconds
+            self.image_recovery_zero_sent = None
+        # Additional gaps reset acquisition; waiting has no trial deadline.
+        self.image_recovery_frames = 0
+        self.person_wait_frames = 0
+        self.controller.pause_stale()
+
+    def _base_stop_acknowledged(self, zero_sent, now):
+        if not self.motion:
+            return True
+        status, stamp = self.motion.status
+        return (zero_sent is not None and now - zero_sent >= 0.4
+                and status == "stopped" and stamp > zero_sent
+                and 0 <= now - stamp < 0.5)
+
+    def _check_image_freshness(self, now):
+        if self.latest_stamp:
+            age = (self.node.get_clock().now().nanoseconds - self.latest_stamp) / 1e9
+            if age < -0.1:
+                self.controller.stop("stale_or_future_image")
+            elif (age > self.controller.config.max_age
+                  or now - self.latest_received > self.controller.config.max_age):
+                self._pause_stale_image(now)
+
     def _checked_decision(self, *, allow_camera_commands=True):
         """Called with the session lock held; safety checks have no trial expiry."""
         if self.bond.is_broken():
             self.controller.stop("capability_bond_broken")
         elif self.node.count_publishers("/hri/people") != 1:
             self.controller.stop("people_publisher_lost_or_ambiguous")
-        if self.latest_stamp:
-            age = (self.node.get_clock().now().nanoseconds - self.latest_stamp) / 1e9
-            if age > 0.75 or age < -0.1:
-                self.controller.stop("stale_or_future_image")
-        decision = self.controller.tick(time.monotonic())
+        now = time.monotonic()
+        self._check_image_freshness(now)
+        decision = self.controller.tick(now)
         camera = getattr(self, "camera", None)
+        if ((self.image_recovery_started is not None or self.person_wait_reason)
+                and not self.controller.halted):
+            # Keep optional-camera health checks, but issue no new head commands
+            # from stale perception while the base is held.
+            if camera and camera.active:
+                error = camera.health_error()
+                if error:
+                    return self.controller.stop(error)
+        if self.image_recovery_started is not None and not self.controller.halted:
+            ready = self.image_recovery_frames >= 3
+            reason = "waiting_fresh_images"
+            stopped = self._base_stop_acknowledged(self.image_recovery_zero_sent, now)
+            if ready and not stopped:
+                reason = "waiting_image_recovery_stop"
+            ready = ready and stopped
+            if not ready:
+                return Decision(0.0, 0.0, reason, decision.locked)
+            self.image_recovery_started = None
+            self.image_recoveries += 1
+        if self.person_wait_reason and not self.controller.halted:
+            if self.person_wait_frames < 3:
+                reason = "reacquiring_person" if self.person_wait_frames else self.person_wait_reason
+                return Decision(0.0, 0.0, reason, decision.locked)
+            if not self._base_stop_acknowledged(self.person_wait_zero_sent, now):
+                return Decision(0.0, 0.0, "waiting_person_stop", decision.locked)
+            self.person_wait_reason = ""
+            self.person_recoveries += 1
         return camera.gate(decision, allow_commands=allow_camera_commands) if camera else decision
 
     def observe(self, blackboard):
-        # This is a stream-start watchdog, NOT a person-acquisition/trial limit.
-        # Fresh empty frames may wait indefinitely at zero before first lock.
-        initial_frame_deadline = time.monotonic() + 5.0
+        # No trial or image-arrival deadline: zero commands keep the base held
+        # until fresh perception returns or the operator cancels. Provider and
+        # timestamp/geometry faults remain fatal and use the existing cleanup.
         speech = getattr(self, "speech", None)
         while rclpy.ok() and not self.cancelled.is_set():
             with self.lock:
-                if not self.latest_stamp and time.monotonic() >= initial_frame_deadline:
-                    self.controller.stop("initial_detection_stream_unavailable")
                 decision = self._checked_decision()
                 if self.motion:
                     error = self.motion.send(decision)
                     if error:
                         decision = self.controller.stop(error)
+                    else:
+                        if (self.image_recovery_started is not None
+                                and self.image_recovery_zero_sent is None):
+                            self.image_recovery_zero_sent = time.monotonic()
+                        if self.person_wait_reason and self.person_wait_zero_sent is None:
+                            self.person_wait_zero_sent = time.monotonic()
                 self.publish_preview(decision)
                 if self.controller.halted:
                     self.finished = True

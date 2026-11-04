@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-04",
+  "scope": "Persistent zero-motion waiting for missing/ambiguous people and image interruptions",
+  "normal_exit": "Ctrl+C",
+  "wait_timeout_s": null,
+  "image_age_limit_s": 0.75,
+  "new_unique_observations_to_resume": 3,
+  "observations_must_postdate_person_pause": true,
+  "zero_hold_s": 0.4,
+  "new_stopped_ack_required_for_motion": true,
+  "identity_association": false,
+  "fatal_faults_retained": [
+    "invalid geometry after acquisition",
+    "invalid, repeated, backwards or future image timestamps",
+    "wrong provider or frame",
+    "lost or ambiguous publishers, broken bond, motion or optional-camera faults"
+  ],
+  "supersedes": {
+    "image_recovery_timeout_s": 3.0,
+    "initial_image_timeout_s": 5.0,
+    "person_missing_and_ambiguous_people_were_fatal_after_acquisition": true
+  },
+  "validation": {
+    "unit_tests_passed": 208,
+    "unit_log": "/tmp/hri-person-wait-unit.log",
+    "build_package": "hri_reference_app",
+    "build_passed": true,
+    "build_log": "/tmp/hri-person-wait-build.log",
+    "integration_probe_syntax_checked": true,
+    "live_ros_integration_run": false,
+    "physical_validation_of_this_change": "confirmed_by_user_report",
+    "physical_observation": {
+      "source": "User report in the development conversation on 2026-11-04",
+      "robot": "NAO",
+      "person_leaves_view_robot_stops": true,
+      "person_returns_robot_resumes": true,
+      "second_person_appears_robot_stops": true,
+      "second_person_leaves_robot_resumes": true,
+      "note": "Qualitative operator confirmation; no independent braking-time, distance or identity measurement"
+    },
+    "scenarios": [
+      "zero/ambiguous people for 60 simulated seconds then reacquisition",
+      "both axes zero through real FollowMotion adapter with mocked transport",
+      "three distinct consecutive post-pause detections and new stop acknowledgement",
+      "image stream recovery into empty or ambiguous scenes keeps base held",
+      "30-second image gap followed by three new detections",
+      "initial no-image waiting, indefinite stale-image waiting and cancellation",
+      "invalid data and provider-health faults retain permanent stop"
+    ]
+  },
+  "prior_version_physical_evidence": {
+    "source": "User report and pasted application summary before this change",
+    "user_confirmed_movement_and_image_recovery": true,
+    "image_recoveries": 6,
+    "frames_received": 469,
+    "commands_sent": 1815,
+    "message": "person_missing",
+    "stop_acknowledged": true,
+    "released": true,
+    "note": "Validates the preceding image-recovery version, not the new people-wait policy"
+  }
+}

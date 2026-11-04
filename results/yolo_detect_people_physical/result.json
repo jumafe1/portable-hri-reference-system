@@ -1,0 +1,78 @@
+{
+  "started_utc": "2026-09-23T16:51:16.022312+00:00",
+  "provider": "hri_yolo_providers/YoloDetectPeople",
+  "minimum_confidence": 0.5,
+  "maximum_age_sec": 1.0,
+  "timeout_sec": 30.0,
+  "technical_success": true,
+  "observer_confirmation": true,
+  "released": true,
+  "last_people_frame": {
+    "stamp": {
+      "sec": 1790182284,
+      "nanosec": 950144394
+    },
+    "frame_id": "CameraTop_optical_frame",
+    "provider": "hri_yolo_providers/YoloDetectPeople",
+    "people": [
+      {
+        "confidence": 0.6942275762557983,
+        "tracking_id": "",
+        "center_x": 175.7333984375,
+        "center_y": 119.8951416015625,
+        "width": 271.5096435546875,
+        "height": 239.66983032226562
+      },
+      {
+        "confidence": 0.648081362247467,
+        "tracking_id": "",
+        "center_x": 293.56781005859375,
+        "center_y": 152.23992919921875,
+        "width": 52.2784423828125,
+        "height": 72.66948699951172
+      }
+    ]
+  },
+  "detections": [
+    {
+      "confidence": 0.6942275762557983,
+      "tracking_id": "",
+      "center_x": 175.7333984375,
+      "center_y": 119.8951416015625,
+      "width": 271.5096435546875,
+      "height": 239.66983032226562
+    },
+    {
+      "confidence": 0.648081362247467,
+      "tracking_id": "",
+      "center_x": 293.56781005859375,
+      "center_y": 152.23992919921875,
+      "width": 52.2784423828125,
+      "height": 72.66948699951172
+    }
+  ],
+  "point_query": {
+    "success": true,
+    "provider": "hri_yolo_providers/YoloDetectPeople",
+    "message": "people_detected",
+    "people": [
+      {
+        "confidence": 0.6942275762557983,
+        "tracking_id": "",
+        "center_x": 175.7333984375,
+        "center_y": 119.8951416015625,
+        "width": 271.5096435546875,
+        "height": 239.66983032226562
+      },
+      {
+        "confidence": 0.648081362247467,
+        "tracking_id": "",
+        "center_x": 293.56781005859375,
+        "center_y": 152.23992919921875,
+        "width": 52.2784423828125,
+        "height": 72.66948699951172
+      }
+    ]
+  },
+  "passed": true
+}

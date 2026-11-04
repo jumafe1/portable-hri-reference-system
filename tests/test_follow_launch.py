@@ -20,7 +20,7 @@ class FollowLaunchArgumentsTest(unittest.TestCase):
     def arguments(self, mode="follow_person", **overrides):
         values = dict(image_width="320", image_height="240", expected_frame="camera",
                       minimum_confidence="", target_height_ratio="0.6", timeout="",
-                      max_forward_speed="0.03",
+                      max_forward_speed="0.10",
                       orient_camera="false", camera_provider="hri_naoqi_providers/NaoqiOrientCamera",
                       transcribe_speech="false", confirm_listen="",
                       record_duration="", speech_language="es",
@@ -49,7 +49,7 @@ class FollowLaunchArgumentsTest(unittest.TestCase):
         self.assertEqual(context.launch_configurations["timeout"], "")
 
     def test_speed_default_and_explicit_values_are_forwarded_without_motion_opt_in(self):
-        self.assertEqual(float(self.value(self.arguments(), "--max-forward-speed")), 0.03)
+        self.assertEqual(float(self.value(self.arguments(), "--max-forward-speed")), 0.10)
         for maximum in ("0.01", "0.05", "0.1"):
             with self.subTest(maximum=maximum):
                 args = self.arguments(max_forward_speed=maximum)
@@ -62,7 +62,7 @@ class FollowLaunchArgumentsTest(unittest.TestCase):
                            if isinstance(action, DeclareLaunchArgument)
                            and action.name == "max_forward_speed")
         declaration.execute(context)
-        self.assertEqual(float(context.launch_configurations["max_forward_speed"]), 0.03)
+        self.assertEqual(float(context.launch_configurations["max_forward_speed"]), 0.10)
 
     def test_invalid_speed_is_rejected_with_or_without_motion(self):
         for enabled in ("true", "false"):

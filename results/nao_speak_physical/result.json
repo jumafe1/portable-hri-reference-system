@@ -1,0 +1,13 @@
+{
+  "started_utc": "2026-09-16T20:54:30.532555+00:00",
+  "text": "Hola, esta es una prueba con Capabilities2.",
+  "language": "Spanish",
+  "technical_success": true,
+  "audible_confirmation": true,
+  "response": {
+    "success": true,
+    "provider": "hri_naoqi_providers/NaoSpeak",
+    "message": "Synchronous say command finished."
+  },
+  "passed": true
+}

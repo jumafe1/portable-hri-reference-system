@@ -286,6 +286,13 @@ def main():
                     def until():
                         return any(abs(v[0] - max_forward_speed) < 1e-6 for _, v in
                                    fixture.recorders[f"/{robot}/cmd_vel"].since(fixture.case_start))
+                elif case in ("person_loss", "ambiguous", "stream_loss"):
+                    interrupt = "process_group"
+                    wait_reason = {"person_loss": "person_missing", "ambiguous": "ambiguous_people",
+                                   "stream_loss": "waiting_fresh_images"}[case]
+                    def until():
+                        return sum(p.get("reason") == wait_reason
+                                   for p in fixture.snapshot(fixture.case_start)[0]) >= 120
                 code, output = launch(arguments, evidence / f"{robot}_{case}.log",
                                       fixture, interrupt=interrupt, until=until)
                 try:
@@ -322,10 +329,15 @@ def main():
                               and any(values[0] > 0.03 for _, values in commands)
                               and any(abs(values[0] - max_forward_speed) < 1e-6
                                       for _, values in commands))
-                if case == "person_loss":
-                    passed = passed and result.get("message") == "person_missing"
-                if case in ("stream_loss", "stale_frame"):
-                    passed = passed and result.get("message") in ("stale_or_future_image", "stale_detection")
+                if case in ("person_loss", "ambiguous", "stream_loss"):
+                    waiting = [p for p in fixture.snapshot(fixture.case_start)[0]
+                               if p.get("reason") == wait_reason]
+                    passed = (passed and len(waiting) >= 120
+                              and all(p.get("vx_m_s") == 0 and p.get("wz_rad_s") == 0 for p in waiting))
+                if case == "stale_frame":
+                    # This fixture jumps the stamp backwards by two seconds;
+                    # backwards stamps remain fatal, unlike a silent stream gap.
+                    passed = passed and result.get("message") == "non_increasing_image_timestamp"
                 if interrupt:
                     passed = passed and result.get("message") == "cancelled_or_ros_shutdown"
                 zero_delays = [stamp - fixture.interrupted_at for stamp, values in commands

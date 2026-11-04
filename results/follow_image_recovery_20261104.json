@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-04",
+  "scope": "Bounded image-stream recovery in FollowSession; no driver or network changes",
+  "source_age_limit_s": 0.75,
+  "receipt_gap_limit_s": 0.75,
+  "recovery_timeout_s": 3.0,
+  "fresh_observations_required": 3,
+  "observations_must_postdate_pause": true,
+  "motion_requires_zero_hold_s": 0.4,
+  "motion_requires_new_stopped_ack": true,
+  "recovery_timeout_reason": "stale_image_recovery_timeout",
+  "permanent_faults_retained": [
+    "post-acquisition missing or ambiguous person",
+    "post-acquisition invalid geometry",
+    "repeated, backwards, invalid or future timestamp",
+    "wrong provider or camera frame",
+    "publisher, bond, motion or optional-camera health failure"
+  ],
+  "validation": {
+    "unit_tests": {"passed": 199, "log": "/tmp/hri-recovery-unit.log"},
+    "motion_path_test": "Real FollowSession and FollowMotion with generated ROS messages and mocked transport/clock: zero during interruption, resume after fresh frames and stop acknowledgement, no commands after cancellation",
+    "build": {"package": "hri_reference_app", "passed": true, "log": "/tmp/hri-recovery-build.log"},
+    "diff_check_passed": true,
+    "live_ros_integration_run": false,
+    "physical_recovery_verified": false
+  },
+  "limitations": [
+    "Does not identify or repair the upstream cause of image delays",
+    "Single-person controlled scene; recovery does not verify personal identity",
+    "Stopped acknowledgement is software telemetry, not a physical braking measurement"
+  ],
+  "prior_physical_observation": "User confirmed NAO movement with the preceding version; this is not validation of the new recovery policy"
+}

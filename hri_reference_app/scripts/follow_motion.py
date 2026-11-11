@@ -24,6 +24,7 @@ class FollowMotion:
     def __init__(self, session):
         self.session = session
         self.node = session.node
+        self.provider = getattr(session.args, "motion_provider", PROVIDER)
         self.requested = False
         self.acquired = False
         self.released = False
@@ -39,7 +40,7 @@ class FollowMotion:
     def request(self, blackboard):
         # Even an unanswered request may have started the provider: free it on exit.
         self.requested = True
-        return UseCapability.Request(capability=CAPABILITY, preferred_provider=PROVIDER,
+        return UseCapability.Request(capability=CAPABILITY, preferred_provider=self.provider,
                                      bond_id=blackboard["bond_id"])
 
     def graph_error(self):
@@ -54,7 +55,7 @@ class FollowMotion:
     def wait_ready(self, blackboard):
         future = self.session.running_client.call_async(GetRunningCapabilities.Request())
         if not self.session.await_future(future, 2.0) or not any(
-            item.capability.capability == CAPABILITY and item.capability.provider == PROVIDER
+            item.capability.capability == CAPABILITY and item.capability.provider == self.provider
             for item in future.result().running_capabilities
         ):
             blackboard["message"] = "motion_provider_not_running"

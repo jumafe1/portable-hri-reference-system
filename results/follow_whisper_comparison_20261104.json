@@ -1,0 +1,76 @@
+{
+  "date": "2026-11-04",
+  "runs": {
+    "with_whisper": {
+      "summary_path": "/home/robotica/.ros/log/2026-11-04-18-25-49-422827-robotica-56235/hri_diagnostics/summary.json",
+      "events_path": "/home/robotica/.ros/log/2026-11-04-18-25-49-422827-robotica-56235/hri_diagnostics/events.jsonl",
+      "duration_s": 103.79832844200064,
+      "follow_observed_s": 101.11486007799977,
+      "waiting_fresh_images_s": 83.5467864150014,
+      "reason_seconds_observed": {
+        "awaiting_detection": 3.763508408999769,
+        "waiting_fresh_images": 83.5467864150014,
+        "preview_following": 13.12576228999751,
+        "target_in_visual_deadband": 0.6788029640010791
+      },
+      "image_recoveries": 3,
+      "people_recoveries": 0,
+      "detections_total": 229,
+      "detection_hz_last30s": 1.8850274668086455,
+      "source_age_at_receipt_p95_last30s": 1.045539102,
+      "cpu_samples_after10s": 94,
+      "system_cpu_mean_percent_after10s": 92.82089551771705,
+      "system_cpu_median_percent_after10s": 98.7484335839599,
+      "fraction_cpu_samples_at_least90percent": 0.8404255319148937,
+      "process_cpu_mean_percent_one_core_after10s": {
+        "hri_diagnostics": 10.591511273698064,
+        "yolo_node": 173.57994741083795,
+        "whisper_worker": 136.74584681401018,
+        "hri_app": 10.769127481854271,
+        "capabilities2_server_node": 2.365174276924262
+      },
+      "speech_last_status": {
+        "state": "processing",
+        "queued_segments": 1,
+        "dropped_segments": 4
+      }
+    },
+    "without_whisper": {
+      "summary_path": "/home/robotica/.ros/log/2026-11-04-18-29-35-115223-robotica-56619/hri_diagnostics/summary.json",
+      "events_path": "/home/robotica/.ros/log/2026-11-04-18-29-35-115223-robotica-56619/hri_diagnostics/events.jsonl",
+      "duration_s": 98.56915938400016,
+      "follow_observed_s": 96.19209961699926,
+      "waiting_fresh_images_s": 0,
+      "reason_seconds_observed": {
+        "awaiting_detection": 2.8482869939998636,
+        "acquiring_target": 0.41156910700010485,
+        "preview_following": 73.59871700599979,
+        "target_in_visual_deadband": 7.111571808998633,
+        "preview_centering_close": 5.308118181001191,
+        "clipped_detection": 1.4968219349993888,
+        "person_missing": 2.5793209570001636,
+        "reacquiring_person": 1.329358790999322,
+        "ambiguous_people": 1.5083348370008025
+      },
+      "image_recoveries": 0,
+      "people_recoveries": 4,
+      "detections_total": 498,
+      "detection_hz_last30s": 5.010507481292552,
+      "source_age_at_receipt_p95_last30s": 0.200740274,
+      "cpu_samples_after10s": 89,
+      "system_cpu_mean_percent_after10s": 53.52836102875796,
+      "system_cpu_median_percent_after10s": 57.39795918367348,
+      "fraction_cpu_samples_at_least90percent": 0.0,
+      "process_cpu_mean_percent_one_core_after10s": {
+        "hri_diagnostics": 10.320249342974638,
+        "yolo_node": 162.1878752071746,
+        "capabilities2_server_node": 2.642905948951092,
+        "hri_app": 7.771325763661874
+      },
+      "speech_last_status": {}
+    }
+  },
+  "method": "Passive observer. CPU statistics exclude first 10 seconds. Detection rates and receipt-age percentiles are the final 30-second window from summary.json. Reason times cover observed follow decisions; durations differ slightly. Runs were sequential and scene/host load were not controlled.",
+  "conclusion": "Strong evidence of shared CPU contention when Whisper is enabled: higher CPU utilization, slower detections, older images and prolonged safety holds. No network configuration changes are indicated by this comparison.",
+  "shutdown": "Both runs were interrupted by the operator. Terminal summaries acknowledge motion stop and capability release. InvalidHandle occurs during ROS entity destruction; Whisper exit -6 is a separate teardown defect. Neither explains the latency observed before Ctrl+C."
+}

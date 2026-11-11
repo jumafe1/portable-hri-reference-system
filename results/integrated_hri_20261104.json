@@ -1,0 +1,51 @@
+{
+  "date": "2026-11-04",
+  "entry": "ros2 launch hri_reference_app aplicacion_hri.launch.py",
+  "profile": "hri_reference_app/config/nao.yaml",
+  "capabilities": [
+    "DetectPeople",
+    "MoveVelocity",
+    "Speak",
+    "TranscribeSpeech"
+  ],
+  "orchestrator": "YASMIN with one Capabilities2 bond; startup greeting precedes listening and motion",
+  "test_results": {
+    "follow_regressions": {
+      "passed": 215,
+      "log": "/tmp/hri-integrated-follow-tests.log"
+    },
+    "new_launch_and_greeting": {
+      "passed": 19,
+      "log": "/tmp/hri-integrated-tests.log"
+    },
+    "cleanup_with_two_new_cases": {
+      "passed": 10,
+      "included_in_follow_regressions": 8,
+      "log": "/tmp/hri-integrated-cleanup-tests.log"
+    },
+    "distinct_tests_passed": 236,
+    "build": {
+      "package": "hri_reference_app",
+      "passed": true,
+      "log": "/tmp/hri-integrated-build.log"
+    },
+    "installed_launch_help": {
+      "passed": true,
+      "log": "/tmp/hri-integrated-launch-help.log"
+    },
+    "installed_profile_models_executables": {
+      "passed": true,
+      "log": "/tmp/hri-integrated-installed-check.log"
+    }
+  },
+  "hardware_actions_performed": false,
+  "real_microphone_captured": false,
+  "integrated_physical_validation": "pending operator test on NAO",
+  "limitations": [
+    "NAO driver must already be running; unified launch owns only HRI and selected workers",
+    "No LLM or generated conversational answers; Speak currently provides a configurable startup greeting",
+    "Single HRI instance per ROS domain; public endpoints are shared",
+    "Other robots need matching providers and their own validation",
+    "Software tests and installed launch construction did not start a live ROS graph"
+  ]
+}

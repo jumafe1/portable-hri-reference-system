@@ -30,28 +30,35 @@ YASMIN recibe este nodo mediante `ServiceState(node=...)` y
 
 ### Transcripción opcional durante el seguimiento
 
-El diagrama anterior muestra el recorrido visual/base. Para añadir voz, iniciar
-el worker Whisper externo con un modelo local configurado y añadir al mismo
-launch de FollowPerson:
+El diagrama anterior muestra el recorrido visual/base. Para añadir voz, añadir
+al mismo launch de FollowPerson:
 
 ```text
 transcribe_speech:=true confirm_listen:=ESCUCHAR
 ```
 
-La aplicación adquiere `TranscribeSpeech` y usa español por defecto. Repite
-captura → procesamiento → nueva captura mientras FollowPerson esté activo,
-salvo que falle la capacidad de voz; al terminar el seguimiento termina también
-la transcripción. Las ventanas de **3 s son internas**: acotan el audio de cada
-solicitud, no la duración de la sesión. No pasar `record_duration` a FollowPerson;
-ese argumento se conserva solo para la prueba independiente de una ventana.
-`speech_language` es opcional para cambiar de idioma, innecesario para español.
-Hay intervalos sin grabación mientras se procesa, no escucha ininterrumpida.
+El launch inicia el worker Whisper como proceso separado y lo cierra al salir.
+Usa `~/.cache/whisper/base.pt`, configurable con `whisper_model_path`; el archivo
+debe existir. Primero carga y prepara el modelo, luego empieza a escuchar bajo
+solicitudes del proveedor. No se necesita tocar la cabeza del robot. Si se usa
+un worker externo ya abierto, indicar `start_whisper_worker:=false` para evitar
+duplicarlo. La aplicación sigue usando únicamente los contratos `/hri/*`.
+
+La aplicación adquiere `TranscribeSpeech` y usa español por defecto. Solicita
+una sesión continua: VAD detecta voz y cierra cada frase tras **0.8 s de silencio**,
+con un máximo de **10 s por fragmento**. Whisper procesa en otro hilo mientras
+sigue entrando audio. Se mantienen como máximo dos frases pendientes; si la
+inferencia no alcanza el ritmo, se descarta la pendiente más antigua y se informa
+`speech_queue_full`/`dropped_segments`. El silencio por sí solo no publica texto.
+No pasar `record_duration` a FollowPerson; ese argumento sigue perteneciendo
+solo a la prueba independiente de una ventana. `speech_language` es opcional.
+La escucha termina al liberar la capacidad o perder su autorización.
 No requiere otra aplicación HRI ni usa el modo independiente de transcripción
 al mismo tiempo. El proveedor predeterminado es
 `hri_whisper_providers/WhisperTranscribeSpeech`.
 
 En otra terminal, `ros2 topic echo /hri/speech/transcript --field text` muestra
-los resultados después de procesar cada ventana. El diagnóstico sin texto está
+los resultados después de procesar cada frase. El diagnóstico sin texto está
 en `/hri/follow_person/speech_status`. `print_transcript:=true` imprime también
 en la terminal de la aplicación y puede conservar el contenido en logs; por
 defecto está desactivado. No se guardan archivos de audio ni texto por defecto,
@@ -62,9 +69,9 @@ preview: `dry_run: true` no significa ausencia de captura si se autorizó escuch
 Un fallo de voz deshabilita e intenta liberar solo esa capacidad; la percepción
 y el movimiento conservan sus paradas. Al terminar el seguimiento, Ctrl+C o un
 fallo de visión/movimiento, se solicita primero cero a la base y se libera también
-la escucha. No genera respuestas ni activa `Speak` automáticamente. La captura
-real, el modelo y el rendimiento de Whisper junto con YOLO siguen pendientes de
-validación en el laboratorio.
+la escucha. No genera respuestas ni activa `Speak` automáticamente. El autor confirmó la transcripción real antes de este cambio; la segmentación
+VAD y captura durante la inferencia aún requieren ensayo con el NAO. La carga
+del modelo y su preparación con silencio sintético se verificaron localmente.
 
 ## Qué significa la sugerencia
 

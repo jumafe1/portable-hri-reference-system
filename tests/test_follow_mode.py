@@ -20,7 +20,7 @@ class FollowModeCleanupTest(unittest.TestCase):
     def run_preview(self, cleanup_error=None, *, diagnostic_error=None,
                     bond_error=None, motion_stop_error=None, motion_release_error=None,
                     motion_enabled=False, camera_enabled=False, camera_stop_error=None,
-                    camera_release_error=None):
+                    camera_release_error=None, greeting_enabled=False, greeting_release_error=None):
         session = MagicMock()
         session.frames = 10
         session.tracked_frames = 8
@@ -64,6 +64,18 @@ class FollowModeCleanupTest(unittest.TestCase):
                 return follow_mode.SUCCEED
 
             session.camera.release.side_effect = release_camera
+        if greeting_enabled:
+            session.startup_speak.requested = True
+            session.startup_speak.released = False
+            session.startup_speak.status = "completed"
+
+            def release_greeting():
+                if greeting_release_error:
+                    raise greeting_release_error
+                session.startup_speak.released = True
+                return follow_mode.SUCCEED
+
+            session.startup_speak.release.side_effect = release_greeting
         events = MagicMock()
         events.attach_mock(session.close_perception, "close_perception")
         events.attach_mock(session.bond.shutdown, "close_bond")
@@ -86,10 +98,30 @@ class FollowModeCleanupTest(unittest.TestCase):
             events.attach_mock(shutdown, "shutdown_ros")
             with redirect_stdout(output):
                 code = follow_mode.run(SimpleNamespace(robot="nao", enable_motion=motion_enabled,
-                                                       orient_camera=camera_enabled))
+                                                       orient_camera=camera_enabled,
+                                                       startup_text="Hola." if greeting_enabled else ""))
         return SimpleNamespace(code=code, result=json.loads(output.getvalue()),
                                session=session, init=init, shutdown=shutdown,
                                loggers=loggers, handlers=handlers, events=events)
+
+    def test_greeting_is_released_and_included_in_final_report(self):
+        observed = self.run_preview(greeting_enabled=True)
+        self.assertEqual(observed.code, 0)
+        self.assertEqual(observed.result["startup_speech_status"], "completed")
+        self.assertTrue(observed.result["startup_speech_released"])
+        observed.session.startup_speak.release.assert_called_once()
+
+    def test_greeting_cleanup_error_cannot_skip_base_stop_or_people_and_bond_release(self):
+        observed = self.run_preview(motion_enabled=True, greeting_enabled=True,
+                                    greeting_release_error=RuntimeError("transport"))
+        self.assertEqual(observed.code, 1)
+        self.assertFalse(observed.result["startup_speech_released"])
+        self.assertFalse(observed.result["released"])
+        observed.session.motion.stop.assert_called_once()
+        observed.session.motion.release.assert_called_once()
+        observed.session.release_fallback.assert_called_once()
+        observed.session.bond.shutdown.assert_called_once()
+        observed.session.close_perception.assert_called_once()
 
     def test_successful_receiver_cleanup_allows_context_destruction(self):
         observed = self.run_preview()

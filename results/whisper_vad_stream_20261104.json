@@ -1,0 +1,71 @@
+{
+  "date": "2026-11-04",
+  "scope": [
+    "VAD phrase segmentation",
+    "Continuous microphone capture during Whisper inference with bounded pending queue"
+  ],
+  "architecture": "FollowSpeech requests the portable TranscribeSpeech capability; Capabilities2 proxy maps session IDs, heartbeat and results; the separate worker owns VAD and inference",
+  "configuration": {
+    "vad": "webrtcvad-wheels==2.0.14",
+    "vad_mode": 2,
+    "frame_ms": 20,
+    "preroll_ms": 200,
+    "minimum_voiced_ms": 100,
+    "endpoint_silence_s": 0.8,
+    "maximum_segment_s": 10,
+    "maximum_pending_segments": 2,
+    "overflow": "discard and clear oldest pending segment; report dropped_segments",
+    "model": "existing local base.pt; unchanged",
+    "inference_threads": 1,
+    "torch_cpu_threads": 2
+  },
+  "lifecycle": {
+    "continuous_admission": "explicit continuous=true; retained until release or terminal error",
+    "lease_timeout_s": 0.5,
+    "audio_receive_timeout_s": 2,
+    "proxy_heartbeat_timeout_s": 2,
+    "application_heartbeat_timeout_s": 3,
+    "inference_timeout_per_segment_s": 60,
+    "cancel": "unsubscribe microphone, clear queued/current audio, ignore in-flight result",
+    "single_window_mode": "preserved; continuous=false by default"
+  },
+  "validation": {
+    "follow_unit_tests_passed": 215,
+    "worker_capture_stream_unit_tests_passed": 37,
+    "standalone_transcribe_unit_tests_passed": 12,
+    "total_unit_tests_passed": 264,
+    "build_packages": [
+      "hri_capability_interfaces",
+      "hri_whisper_providers",
+      "hri_reference_app"
+    ],
+    "build_passed": true,
+    "integration_probe_syntax_passed": true,
+    "ros_proxy_integration": "attempted; environment blocked before node creation",
+    "ros_integration_error": "CycloneDDS failed to enumerate interfaces for udp: -1",
+    "actual_vad_offline": {
+      "real_vad_version": "2.0.14",
+      "upstream_fixture_classification_matched": true,
+      "stream_segments": 1,
+      "segment_seconds": 1.54,
+      "microphone_used": false,
+      "model_used": false
+    },
+    "logs": [
+      "/tmp/hri-vad-build-final.log",
+      "/tmp/hri-vad-follow-tests-final.log",
+      "/tmp/hri-vad-worker-tests.log",
+      "/tmp/hri-vad-transcribe-tests.log",
+      "/tmp/hri-vad-proxy-probe.log"
+    ]
+  },
+  "earlier_physical_evidence": "User reported actual microphone transcription with the previous serial-window version; no accuracy metric",
+  "new_stream_physical_validation": false,
+  "physical_motion_or_microphone_used_by_agent": false,
+  "limitations": [
+    "NAO speech quality and simultaneous YOLO performance require physical retest",
+    "Queue overflow intentionally drops oldest waiting phrase rather than increasing memory indefinitely",
+    "VAD does not guarantee recognition accuracy or prevent all non-speech false positives",
+    "Rebuild and restart ROS consumers after the interface change; VAD dependency was installed in the workspace executable directory"
+  ]
+}

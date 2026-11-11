@@ -29,8 +29,9 @@ source install/setup.bash
 Cargar esos entornos en cada terminal. Mantener una sola instancia del driver,
 de YOLO sobre su tópico y de `hri_app`/Capabilities2. Elegir una única ejecución:
 seguimiento con capacidades opcionales, o prueba independiente de transcripción;
-no iniciar dos servidores sobre `/hri/*`. El worker Whisper es externo y no
-sustituye al servidor de capacidades.
+no iniciar dos servidores sobre `/hri/*`. El worker Whisper es un proceso separado
+que el mismo launch inicia al habilitar voz con su proveedor. Capabilities2 sigue
+gestionando la capacidad y autorizando cada captura; el worker no sustituye al servidor.
 
 ## Orientar la cámara dentro del seguimiento
 
@@ -129,27 +130,58 @@ parada física; Ctrl+C no sustituye al mecanismo físico de parada.**
 
 La transcripción produce texto, sin generar respuestas con un modelo de lenguaje
 ni llamar a `Speak` automáticamente. Puede utilizarse como prueba independiente
-de una ventana, o durante `follow_person` mediante ventanas repetidas bajo
-autorización explícita. No implementa captura ininterrumpida ni detección robusta
-de fin de voz: captura una ventana, espera la inferencia y solo después inicia
-la siguiente; hay intervalos sin captura y una frase puede quedar dividida.
+de una ventana, o durante `follow_person` mediante escucha continua bajo
+autorización explícita. En seguimiento, WebRTC VAD procesa frames de 20 ms:
+abre un fragmento tras detectar voz y lo cierra después de 0.8 s de silencio.
+Conserva hasta 200 ms anteriores al inicio de voz, siempre posteriores a la
+solicitud autorizada. Se ignoran ráfagas con menos de 100 ms de voz; una frase
+muy larga se divide al llegar a 10 s.
 
-### Dependencias todavía pendientes para ASR real
+Whisper procesa un fragmento en otro hilo mientras el callback de audio sigue
+capturando. El buffer actual, dos fragmentos pendientes y una inferencia activa
+están acotados. Si se llena la cola, se descarta y vacía la pendiente más antigua;
+`speech_queue_full` y `dropped_segments` hacen visible esa pérdida. No se puede
+prometer conservar todo el habla si la CPU transcribe más lento de lo que llega.
+El silencio solo no genera transcripciones vacías. El detector de voz puede
+confundir ruido con habla; esto no garantiza exactitud del texto.
 
-El entorno usado para las pruebas no tiene instalados `audio_common_msgs` ni
-Whisper, ni se descargó un modelo para inferencia real. Para probar el worker se
-necesitan, en el intérprete usado por ROS: `rclpy`, `audio_common_msgs`, NumPy,
+### Dependencias y preparación de Whisper
+
+Para probar el worker se necesitan, en el intérprete usado por ROS:
+`rclpy`, `audio_common_msgs`, NumPy,
 PyTorch y la distribución `openai-whisper` (módulo Python `whisper`), además de un
 archivo de pesos `.pt` local de procedencia confiable. El worker no descarga
 pesos automáticamente ni usa una API remota.
+
+La escucha continua añade `webrtcvad-wheels==2.0.14`
+([documentación del detector](https://github.com/daanzu/py-webrtcvad-wheels)).
+Se instala junto al ejecutable dentro del workspace, sin cambiar el Python del
+sistema. Desde `~/Documents/portable_hri_ws`, después de compilar:
+
+```bash
+python3 -m pip install --no-deps --target install/hri_whisper_providers/lib/hri_whisper_providers \
+  -r src/portable-hri-providers/hri_whisper_providers/requirements.txt
+```
+
+Ya se instaló en este workspace. Al recrear `install/` debe repetirse ese paso.
+El modelo sigue siendo el `base.pt` existente; no se cambió de modelo.
+
+
+El 4 de noviembre de 2026 se comprobaron esas dependencias en el computador
+del laboratorio y se cargó `~/.cache/whisper/base.pt` en CPU. La preparación
+incluye una inferencia con silencio sintético antes de anunciar `model_ready`;
+no utiliza el micrófono. Esa comprobación no valida reconocimiento de voz real.
 
 Comprobar `/nao/mic_info` antes de capturar. El adaptador inicial acepta
 exclusivamente un canal, 16 kHz, `sample_format: S16LE` y
 `coding_format: wave`. En el driver inspeccionado, los bytes son PCM crudo sin
 cabecera WAV, pese a esa etiqueta. Otros formatos se rechazan, no se convierten.
 
-En una terminal con el entorno preparado, sustituir la ruta de ejemplo por el
-archivo real e iniciar el worker:
+El launch usa por defecto `~/.cache/whisper/base.pt`; puede cambiarse mediante
+`whisper_model_path:=/ruta/absoluta/modelo.pt`. No hace falta iniciar el worker
+en otra terminal. Al cerrar la aplicación también se cierra el worker del launch.
+
+Para gestionar el worker manualmente, iniciar una sola instancia con:
 
 ```bash
 ros2 run hri_whisper_providers whisper_worker --ros-args \
@@ -159,17 +191,18 @@ ros2 run hri_whisper_providers whisper_worker --ros-args \
   -p audio_info_topic:=/nao/mic_info
 ```
 
-Para Pepper, cambiar explícitamente los dos tópicos del worker; cambiar `robot`
-en la aplicación no cambia un worker que ya está ejecutándose.
+En ese caso añadir `start_whisper_worker:=false` al launch de la aplicación.
+Para Pepper, el worker iniciado automáticamente recibe `/pepper/mic_stamped`
+y `/pepper/mic_info`; un worker manual requiere cambiar ambos parámetros.
 
 ### Prueba independiente de una ventana
 
-En otra terminal, con cualquier `hri_app` anterior terminado:
+Con el driver activo y cualquier `hri_app` anterior terminado:
 
 ```bash
 ros2 launch hri_reference_app hri_app.launch.py \
   robot:=nao mode:=transcribe_speech confirm:=ESCUCHAR \
-  record_duration:=3.0 timeout:=60.0
+  record_duration:=3.0 timeout:=60.0 print_transcript:=true
 ```
 
 Esperar el mensaje `capture_started: hable ahora` antes de hablar. La captura
@@ -183,15 +216,38 @@ publica en `/hri/speech/transcript`, correlacionado mediante `request_id`.
 
 ### Transcribir durante FollowPerson
 
-Mantener el driver y YOLO activos, iniciar el worker en otra terminal y ejecutar
-una sola aplicación HRI. Primero probar **sin movimiento**:
+Mantener el driver y YOLO activos y ejecutar una sola aplicación HRI.
+Cerrar antes cualquier worker manual, salvo que se indique
+`start_whisper_worker:=false`. Primero probar **sin movimiento**:
 
 ```bash
 ros2 launch hri_reference_app hri_app.launch.py \
   robot:=nao mode:=follow_person \
   image_width:=320 image_height:=240 expected_frame:=CameraTop_optical_frame \
-  transcribe_speech:=true confirm_listen:=ESCUCHAR
+  target_height_ratio:=0.75 max_forward_speed:=0.1 \
+  orient_camera:=false enable_motion:=false \
+  transcribe_speech:=true confirm_listen:=ESCUCHAR print_transcript:=true
 ```
+
+El worker muestra `model_loading` y `model_ready`, luego `capture_started` y
+`audio_received`. Cada frase genera `transcribing` y `transcription_result`; la
+captura permanece activa mientras se transcribe. Una pausa de 0.8 s cierra la
+frase, pero el texto se publica cuando termina también la inferencia.
+`capture_started` indica aceptación; `audio_received` confirma que llegaron muestras.
+La falta de audio produce `audio_capture_timeout` con el número de bytes recibidos.
+Una autorización vencida se indica mediante `capture_cancelled`; un resultado
+tardío descartado se indica con `result_discarded`. Estos estados no imprimen
+audio ni texto reconocido. Solo la aplicación imprime texto con la opción indicada.
+
+El primer arranque de voz permite hasta 60 s de espera por el worker o sus
+metadatos de audio, sin bloquear el seguimiento. Se reintenta únicamente tras
+rechazo explícito que confirma que no hubo captura. Un timeout de admisión no
+se reintenta porque podría haberse aceptado la solicitud. La preparación del
+modelo ocurre antes de exponer el servicio de captura, evitando cargarlo dentro
+de una solicitud ya autorizada. El límite de la autorización sigue siendo 0.5 s.
+El preview añade `speech_status` y `transcripts_received`; `waiting_worker`
+puede significar que está cargando o que falta el proceso, y `waiting_audio_info`
+indica ausencia de metadatos. Superar el plazo deshabilita solo la voz.
 
 Las dimensiones y el frame deben corresponder a la cámara verificada. Esta
 configuración adquiere `DetectPeople` y `TranscribeSpeech`, pero no mueve la
@@ -201,11 +257,16 @@ La transcripción usa español por defecto y sigue activa durante la vida de
 FollowPerson, salvo que falle la capacidad de voz. No añadir `record_duration`,
 `timeout` ni `duration`: el seguimiento no tiene un temporizador total y
 `record_duration` pertenece únicamente a la prueba independiente de una ventana.
-Internamente se capturan ventanas acotadas de **3 s**, se procesan y se repite
-hasta que el seguimiento se detenga por Ctrl+C o fallo. Esos 3 s no terminan la
-sesión. Continúan existiendo intervalos sin captura durante la inferencia;
-no se promete escucha ininterrumpida. `speech_language` sigue disponible como
-opción si se necesita otro idioma, pero no hace falta para español.
+Internamente se solicita `continuous=true`, `duration_sec=10.0` (máximo por
+fragmento) y `silence_sec=0.8`. Una sola admisión produce múltiples resultados
+con el mismo `request_id` y `segment_index` creciente. `final=true` cierra la
+solicitud; los resultados normales de frases tienen `final=false`. El estado
+`/hri/speech/capture_status` distingue escucha, voz e inferencia y comunica el
+tamaño de la cola sin contenido hablado. Los heartbeats mantienen la sesión
+durante silencios largos. La ausencia de audio durante 2 s o de heartbeat del
+worker durante 2 s termina esa solicitud; no se confunde silencio con falta de
+muestras. La inferencia conserva un plazo máximo de 60 s por fragmento.
+`speech_language` sigue disponible si se necesita otro idioma.
 
 Para combinarlo con movimiento, una vez verificadas percepción, captura y
 paradas, añadir `enable_motion:=true confirm:=MOVER`. Si se desea orientación,
@@ -230,7 +291,7 @@ En otra terminal con los entornos ROS cargados, antes de hablar:
 ros2 topic echo /hri/speech/transcript --field text
 ```
 
-Se muestra el texto cuando termina la inferencia de cada ventana, no palabra por
+Se muestra el texto cuando termina la inferencia de cada frase, no palabra por
 palabra mientras hablas. El visor no inicia ni autoriza una captura. Para ver
 también `success`, `message`, idioma y `request_id`, quitar `--field text`.
 El estado de la escucha dentro del seguimiento, sin contenido hablado, se observa con:
@@ -247,7 +308,7 @@ texto: el tópico y el visor bastan.
 ### Privacidad y límites
 
 El worker solo crea su suscripción de audio durante una captura aceptada,
-mantiene un buffer acotado en memoria y no escribe audio ni transcripciones a
+mantiene buffers y cola acotados en memoria y no escribe audio ni transcripciones a
 archivos. La aplicación no imprime el texto por defecto. **Esto no apaga el
 micrófono del robot ni impide que su driver publique audio o que otros clientes
 lo reciban/graben.** Restringir acceso al grafo ROS y contar con autorización de
@@ -261,8 +322,8 @@ duradero de conversación por defecto.
 
 La liberación o pérdida del vínculo invalida resultados tardíos y detiene nuevas
 capturas. Una inferencia CPU ya iniciada puede seguir calculando hasta finalizar;
-su resultado no debe publicarse tras perder la autorización. El filtro simple
-de energía no evita todas las transcripciones erróneas o alucinaciones. El coste
+su resultado no debe publicarse tras perder la autorización. VAD y el filtro
+de energía no evitan todas las transcripciones erróneas o alucinaciones. El coste
 de Whisper junto con YOLO y la calidad de reconocimiento real siguen pendientes
 de medición en el computador del laboratorio.
 
@@ -276,8 +337,9 @@ recorte, feedback vencido y Ctrl+C. No es evidencia de movimiento físico.
 
 La transcripción tiene pruebas de captura acotada/formato/lease, worker con
 inferencia simulada, proveedor ROS con backend falso y aplicación completa para
-éxito, rechazo y cancelación. **No se validaron reconocimiento con pesos reales,
-micrófono físico ni rendimiento simultáneo con YOLO.** No hay type-checker
+éxito, rechazo y cancelación. Esas pruebas iniciales no validaban reconocimiento con micrófono físico ni
+rendimiento simultáneo con YOLO. Después, el autor confirmó transcripción real
+en la versión anterior a VAD; esa confirmación no valida aún este incremento. No hay type-checker
 estático Python ni ESLint configurados; compilar sintaxis no comprueba tipos.
 
 La integración inicial de voz opcional en FollowPerson pasó **10/10 casos ROS simulados**:
@@ -286,7 +348,7 @@ resultado ajeno, timestamp antiguo, cancelación con solicitud pendiente, previe
 y pérdida visual. Se verificaron también **172 pruebas unitarias de seguimiento,
 11 de geometría y 11 del modo independiente de transcripción**.
 [Informe compacto](results/follow_person_transcription_20261021.json).
-Después de simplificar el comando, la verificación vigente pasó **175 pruebas
+Después de simplificar el comando, aquella versión pasó **175 pruebas
 unitarias de seguimiento, 11 de geometría y 11 del modo independiente**, además
 de repetir los **10/10 casos ROS** sin argumentos de duración ni idioma en
 FollowPerson. Se verificó que las solicitudes usan internamente 3 s y español.
@@ -295,6 +357,18 @@ el [informe de configuración simplificada](results/follow_person_speech_default
 registra la verificación posterior.
 Esta evidencia comprueba coordinación, parada y liberación software, no calidad
 ASR, funcionamiento del micrófono ni desempeño de inferencia durante marcha real.
+
+El arranque automático del 4 de noviembre pasó 213 pruebas de seguimiento,
+23 del worker/núcleo de captura y 12 del modo independiente. Se verificó también
+la carga y preparación del modelo real con silencio sintético (10.87 s en ese
+ensayo). No se capturó audio real ni se ordenó movimiento en estas verificaciones.
+[Informe del incremento](results/whisper_auto_start_20261104.json).
+
+La segmentación VAD y captura durante inferencia se verifican en
+[whisper_vad_stream_20261104.json](results/whisper_vad_stream_20261104.json).
+Al cambiar el contrato ROS es necesario cerrar la aplicación y workers anteriores,
+recompilar `hri_capability_interfaces`, `hri_whisper_providers` y `hri_reference_app`
+y cargar de nuevo `install/setup.bash`. Este workspace ya está compilado.
 
 Desde este repositorio, con ROS y overlay cargados, las unidades no necesitan
 driver ni hardware:

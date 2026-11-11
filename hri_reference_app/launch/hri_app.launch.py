@@ -1,7 +1,9 @@
 """Launch one portable HRI application with a selectable YASMIN mode."""
 
 from importlib.util import find_spec
+import json
 import math
+import re
 from pathlib import Path
 import shlex
 import signal
@@ -29,6 +31,13 @@ MOVEMENT_LIMITS = (0.5, 0.3, math.pi / 2.0)
 
 def argument(context, name):
     return LaunchConfiguration(name).perform(context)
+
+
+def ros_logging_arguments(context):
+    level = argument(context, "log_level").strip().lower()
+    if level not in {"debug", "info", "warn", "error", "fatal"}:
+        raise RuntimeError("log_level must be debug, info, warn, error or fatal")
+    return ["--log-level", level]
 
 
 def require_yasmin():
@@ -90,6 +99,16 @@ def application_arguments(context, mode, robot):
         ]
 
     if mode == "follow_person":
+        for name in ("people_provider", "motion_provider", "speak_provider"):
+            provider = argument(context, name).strip()
+            if not re.fullmatch(r"[a-z][a-z0-9_]*/[A-Za-z][A-Za-z0-9_]*", provider):
+                raise RuntimeError(name + " must have the form package/Provider")
+            args += ["--" + name.replace("_", "-"), provider]
+        greeting = argument(context, "startup_text")
+        if greeting:
+            if not greeting.strip() or len(greeting) > 120 or not argument(context, "speak_language").strip():
+                raise RuntimeError("Use a short startup_text (at most 120 characters) and speak_language")
+            args += ["--startup-text", greeting, "--speak-language", argument(context, "speak_language")]
         if argument(context, "timeout").strip() or argument(context, "duration").strip():
             raise RuntimeError("follow_person is continuous: remove timeout/duration; stop with Ctrl+C")
         if argument(context, "record_duration").strip():
@@ -174,43 +193,83 @@ def application_arguments(context, mode, robot):
     ]
 
 
+def whisper_worker_actions(context, mode, robot):
+    speech_enabled = mode == "transcribe_speech" or (
+        mode == "follow_person" and argument(context, "transcribe_speech").strip().lower() == "true")
+    if not speech_enabled or argument(context, "speech_provider").strip() != "hri_whisper_providers/WhisperTranscribeSpeech":
+        return []
+    enabled = argument(context, "start_whisper_worker").strip().lower()
+    if enabled not in {"true", "false"}:
+        raise RuntimeError("start_whisper_worker must be true or false")
+    if enabled == "false":
+        return []
+    try:
+        get_package_share_directory("hri_whisper_providers")
+    except PackageNotFoundError:
+        return []  # Optional voice reports the missing provider through its existing lifecycle.
+    model = str(Path(argument(context, "whisper_model_path")).expanduser())
+    return [Node(
+        package="hri_whisper_providers", executable="whisper_worker", name="whisper_worker",
+        ros_arguments=ros_logging_arguments(context),
+        output="screen", parameters=[{
+            "model_path": model, "input_format": argument(context, "audio_input_format"),
+            "audio_topic": argument(context, "audio_topic") or f"/{robot}/mic_stamped",
+            "audio_info_topic": argument(context, "audio_info_topic") or f"/{robot}/mic_info",
+        }],
+    )]
+
+
 def launch_setup(context):
     require_yasmin()
+    logging_args = ros_logging_arguments(context)
     mode = argument(context, "mode").strip().lower()
     robot = argument(context, "robot").strip().lower()
     if mode not in MODES:
         raise RuntimeError("mode must be one of: " + ", ".join(sorted(MODES)))
-    if robot not in ROBOTS:
-        raise RuntimeError("robot must be nao or pepper")
+    if not re.fullmatch(r"[a-z][a-z0-9_]*", robot) or (mode != "follow_person" and robot not in ROBOTS):
+        raise RuntimeError("Use nao/pepper for demos, or a configured robot identifier for follow_person")
     app_args = application_arguments(context, mode, robot)
     if mode in {"move_velocity", "follow_person", "transcribe_speech"} and find_spec("bondpy") is None:
         raise RuntimeError("This mode requires ros-jazzy-bondpy. Install it and source ROS.")
 
-    share_parents = {
-        str(Path(get_package_share_directory(package)).parent)
-        for package in (
-            "hri_capability_interfaces",
-            "hri_naoqi_providers",
-            "hri_yolo_providers",
-        )
-    }
+    packages = {"hri_capability_interfaces"}
+    if mode == "follow_person":
+        providers = [argument(context, "people_provider")]
+        if "--enable-motion" in app_args:
+            providers.append(argument(context, "motion_provider"))
+            if "--orient-camera" in app_args:
+                providers.append(argument(context, "camera_provider"))
+        if "--startup-text" in app_args:
+            providers.append(argument(context, "speak_provider"))
+        packages.update(provider.split("/", 1)[0] for provider in providers)
+    else:
+        packages.update(("hri_naoqi_providers", "hri_yolo_providers"))
+    share_parents = {str(Path(get_package_share_directory(package)).parent) for package in packages}
     follow_speech = mode == "follow_person" and "--transcribe-speech" in app_args
     if mode == "transcribe_speech" or follow_speech:
         try:
-            share_parents.add(str(Path(get_package_share_directory("hri_whisper_providers")).parent))
+            share_parents.add(str(Path(get_package_share_directory(argument(context, "speech_provider").split("/", 1)[0])).parent))
         except PackageNotFoundError:
             # Standalone transcription requires its provider; optional follow voice
             # reports unavailable through capability discovery and keeps following.
             if not follow_speech:
                 raise
-    remappings = [] if robot == "nao" else [
+    remappings = [
         ("/nao/say", "/pepper/say"),
         ("/nao/move_to", "/pepper/move_to"),
         ("/nao/odom", "/pepper/odom"),
         ("/nao/cmd_vel", "/pepper/cmd_vel"),
         ("/nao/joint_trajectory", "/pepper/joint_trajectory"),
         ("/nao/joint_states", "/pepper/joint_states"),
-    ]
+    ] if robot == "pepper" else []
+    overrides = json.loads(argument(context, "backend_remappings"))
+    if not isinstance(overrides, list) or any(
+        not isinstance(pair, list) or len(pair) != 2 or
+        any(not isinstance(value, str) or not value.startswith("/") for value in pair)
+        for pair in overrides
+    ):
+        raise RuntimeError("backend_remappings must be a JSON list of absolute name pairs")
+    remappings.extend(tuple(pair) for pair in overrides)
     if mode in {"detect_people", "follow_person"}:
         detections_topic = argument(context, "detections_topic")
         if not detections_topic.startswith("/"):
@@ -218,7 +277,7 @@ def launch_setup(context):
         remappings.append(("/yolo/detections", detections_topic))
     server_options = {}
     extended_cleanup = mode == "follow_person" and (
-        argument(context, "orient_camera").strip().lower() == "true" or follow_speech)
+        argument(context, "orient_camera").strip().lower() == "true" or follow_speech or "--startup-text" in app_args)
     if mode in {"follow_person", "transcribe_speech"}:
         # Keep services available while the application stops/releases on Ctrl+C.
         supervisor = Path(get_package_prefix("hri_reference_app")) / "lib/hri_reference_app/graceful_server.py"
@@ -233,6 +292,7 @@ def launch_setup(context):
         executable="capabilities2_server_node",
         name="capabilities",
         output="screen",
+        ros_arguments=logging_args,
         parameters=[{
             "db_file": "/tmp/portable_hri_app.sqlite3",
             "rebuild": True,
@@ -252,6 +312,7 @@ def launch_setup(context):
         executable="hri_app",
         name="portable_hri_app",
         output="screen",
+        ros_arguments=logging_args,
         arguments=app_args,
         remappings=app_remappings,
         **({"sigterm_timeout": "30.0" if extended_cleanup else "8.0"}
@@ -270,12 +331,20 @@ def launch_setup(context):
             on_exit=on_application_exit,
         )
     )
-    return [capabilities_server, application, stop_when_application_finishes]
+    return whisper_worker_actions(context, mode, robot) + [
+        capabilities_server, application, stop_when_application_finishes]
 
 
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument("robot", description="nao or pepper"),
+        DeclareLaunchArgument("log_level", default_value="info", description="ROS logging threshold for HRI, providers and Whisper"),
+        DeclareLaunchArgument("robot", description="Robot profile identifier; demos support nao/pepper"),
+        DeclareLaunchArgument("people_provider", default_value="hri_yolo_providers/YoloDetectPeople"),
+        DeclareLaunchArgument("motion_provider", default_value="hri_naoqi_providers/NaoqiMoveVelocity"),
+        DeclareLaunchArgument("speak_provider", default_value="hri_naoqi_providers/NaoSpeak"),
+        DeclareLaunchArgument("speak_language", default_value="Spanish"),
+        DeclareLaunchArgument("startup_text", default_value="", description="Optional short greeting before listening/motion"),
+        DeclareLaunchArgument("backend_remappings", default_value="[]", description="Provider backend ROS name pairs as JSON"),
         DeclareLaunchArgument("mode", description=", ".join(sorted(MODES))),
         DeclareLaunchArgument("text", default_value="Hola, esta es una aplicación portable con YASMIN."),
         DeclareLaunchArgument("language", default_value="Spanish"),
@@ -290,11 +359,18 @@ def generate_launch_description():
         DeclareLaunchArgument("orient_camera", default_value="false", description="Optional pitch orientation within follow trial; no head actuation in preview"),
         DeclareLaunchArgument("camera_provider", default_value="hri_naoqi_providers/NaoqiOrientCamera"),
         DeclareLaunchArgument("camera_info_topic", default_value="", description="Default /<robot>/camera/front/camera_info"),
-        DeclareLaunchArgument("transcribe_speech", default_value="false", description="Optional repeated speech capture during follow_person"),
+        DeclareLaunchArgument("transcribe_speech", default_value="false", description="Optional continuous phrase transcription during follow_person"),
         DeclareLaunchArgument("confirm_listen", default_value="", description="ESCUCHAR authorizes follow speech independently of MOVER"),
         DeclareLaunchArgument("record_duration", default_value="", description="transcribe_speech only: one capture [0.5,10] s, default 3. Not accepted by follow_person."),
         DeclareLaunchArgument("speech_language", default_value="es", description="es, en or empty for automatic detection"),
         DeclareLaunchArgument("speech_provider", default_value="hri_whisper_providers/WhisperTranscribeSpeech"),
+        DeclareLaunchArgument("start_whisper_worker", default_value="true",
+                              description="Start local Whisper when selected; false for an external worker or simulated backend"),
+        DeclareLaunchArgument("audio_input_format", default_value="naoqi_pcm_s16le"),
+        DeclareLaunchArgument("audio_topic", default_value=""),
+        DeclareLaunchArgument("audio_info_topic", default_value=""),
+        DeclareLaunchArgument("whisper_model_path", default_value=str(Path.home() / ".cache/whisper/base.pt"),
+                              description="Existing local Whisper weights; never downloaded automatically"),
         DeclareLaunchArgument("print_transcript", default_value="false", description="Print text (may persist in launch logs); default topic only"),
         DeclareLaunchArgument("detections_topic", default_value="/yolo/detections"),
         DeclareLaunchArgument("x", default_value="0.0"),

@@ -70,6 +70,7 @@ class FollowMotionArgumentsTest(unittest.TestCase):
 class FollowMotionTransportTest(unittest.TestCase):
     def setUp(self):
         self.session = MagicMock()
+        self.session.args = SimpleNamespace(motion_provider=PROVIDER)
         self.session.cancelled.is_set.return_value = False
         self.session.node.count_publishers.return_value = 1
         self.session.await_future.return_value = True

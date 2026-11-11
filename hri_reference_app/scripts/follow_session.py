@@ -20,6 +20,7 @@ from follow_controller import Config, Controller, Decision, Person
 from follow_camera import FollowCamera
 from follow_motion import FollowMotion
 from follow_speech import FollowSpeech
+from startup_speak import StartupSpeak
 
 
 CAPABILITY = "hri_capability_interfaces/DetectPeople"
@@ -62,6 +63,7 @@ class FollowSession:
         self.motion = None
         self.camera = None
         self.speech = None
+        self.startup_speak = None
         # Diagnostics must not stall observation waiting for reliable readers.
         latest = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
         # One explicit node/executor serves perception, services and heartbeat.
@@ -82,6 +84,8 @@ class FollowSession:
             self.release_client = self.node.create_client(
                 FreeCapability, "/capabilities/free_capability"
             )
+            if getattr(args, "startup_text", ""):
+                self.startup_speak = StartupSpeak(self)
             if getattr(args, "transcribe_speech", False):
                 self.speech = FollowSpeech(self)
             if getattr(args, "enable_motion", False):
@@ -161,7 +165,7 @@ class FollowSession:
                 "people_truncated": len(people) > 10,
             }
             failure = ""
-            if frame.provider != PROVIDER:
+            if frame.provider != getattr(self.args, "people_provider", PROVIDER):
                 failure = "unexpected_people_provider"
             elif frame.header.frame_id != self.args.expected_frame:
                 failure = "unexpected_camera_frame"
@@ -229,7 +233,7 @@ class FollowSession:
         future = self.running_client.call_async(GetRunningCapabilities.Request())
         if not self.await_future(future, 2.0) or not any(
             item.capability.capability == CAPABILITY
-            and item.capability.provider == PROVIDER
+            and item.capability.provider == getattr(self.args, "people_provider", PROVIDER)
             for item in future.result().running_capabilities
         ):
             blackboard["message"] = "requested_provider_not_running"
@@ -269,6 +273,8 @@ class FollowSession:
             "person_wait_frames": self.person_wait_frames,
             "person_recoveries": self.person_recoveries,
             "distance_m": None,
+            "speech_status": self.speech.status if getattr(self, "speech", None) else "disabled",
+            "transcripts_received": self.speech.transcripts_received if getattr(self, "speech", None) else 0,
             "camera_orientation_requested": getattr(self.args, "orient_camera", False),
             "camera_orientation_active": bool(self.camera and self.camera.active),
             "camera_status": self.camera.status if self.camera else (

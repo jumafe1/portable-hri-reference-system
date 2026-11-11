@@ -150,6 +150,16 @@ class SessionTest(unittest.TestCase):
         self.assertEqual(session.listen({}), mode.FAIL)
         session.call.assert_called_once()
 
+    def test_worker_initialization_and_metadata_non_admission_are_retryable(self):
+        session = self.make_session()
+        session.result = self.transcript()
+        accepted = session.call.return_value
+        session.call.side_effect = [SimpleNamespace(accepted=False, message="whisper_worker_unavailable"),
+                                   SimpleNamespace(accepted=False, message="audio_info_unavailable"), accepted]
+        with patch.object(mode.rclpy, "ok", return_value=True):
+            self.assertEqual(session.listen({}), mode.OK)
+        self.assertEqual(session.call.call_count, 3)
+
 
 class CleanupTest(unittest.TestCase):
     def test_cleanup_exception_closes_and_does_not_print_text(self):

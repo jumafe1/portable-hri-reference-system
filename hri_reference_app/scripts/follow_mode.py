@@ -3,6 +3,7 @@
 import argparse
 import json
 import math
+import re
 import signal
 import sys
 import threading
@@ -18,6 +19,8 @@ from yasmin_ros.basic_outcomes import ABORT, CANCEL, SUCCEED, TIMEOUT
 from capability_lifecycle import EstablishBondState, FreeCapabilityState, UseCapabilityState
 from follow_session import CAPABILITY, PROVIDER, FollowSession
 from follow_speech import PROVIDER as SPEECH_PROVIDER
+from follow_motion import PROVIDER as MOTION_PROVIDER
+from startup_speak import PROVIDER as SPEAK_PROVIDER
 
 
 APP_SUCCEEDED = "application_succeeded"
@@ -26,7 +29,12 @@ APP_FAILED = "application_failed"
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Follow preview by default; motion requires explicit opt-in.")
-    parser.add_argument("--robot", choices=("nao", "pepper"), required=True)
+    parser.add_argument("--robot", required=True)
+    parser.add_argument("--people-provider", default=PROVIDER)
+    parser.add_argument("--motion-provider", default=MOTION_PROVIDER)
+    parser.add_argument("--startup-text", default="", help="Optional short greeting before listening or motion.")
+    parser.add_argument("--speak-provider", default=SPEAK_PROVIDER)
+    parser.add_argument("--speak-language", default="Spanish")
     parser.add_argument("--image-width", type=int, required=True)
     parser.add_argument("--image-height", type=int, required=True)
     parser.add_argument("--expected-frame", required=True)
@@ -39,7 +47,7 @@ def parse_args(argv=None):
                         help="Optional calibrated pitch framing during confirmed motion; preview never actuates it.")
     parser.add_argument("--camera-provider", default="hri_naoqi_providers/NaoqiOrientCamera")
     parser.add_argument("--transcribe-speech", action="store_true",
-                        help="Optional serial microphone windows; external speech worker must be running.")
+                        help="Optional continuous phrase transcription; launch manages the selected worker.")
     parser.add_argument("--confirm-listen", default="")
     parser.add_argument("--speech-language", choices=("es", "en", ""), default="es")
     parser.add_argument("--speech-provider", default=SPEECH_PROVIDER)
@@ -47,6 +55,15 @@ def parse_args(argv=None):
                         help="Print recognized text; terminal/ROS launch logs may persist it.")
     parser.add_argument("--confirm", default="")
     args = parser.parse_args(remove_ros_args(args=sys.argv)[1:] if argv is None else argv)
+    if not re.fullmatch(r"[a-z][a-z0-9_]*", args.robot):
+        parser.error("robot must be a lowercase profile identifier.")
+    for provider in (args.people_provider, args.motion_provider, args.speak_provider):
+        if not re.fullmatch(r"[a-z][a-z0-9_]*/[A-Za-z][A-Za-z0-9_]*", provider):
+            parser.error("Providers must have the form package/Provider.")
+    if len(args.startup_text) > 120 or (args.startup_text and not args.startup_text.strip()):
+        parser.error("startup-text must be empty or a short greeting of at most 120 characters.")
+    if not args.speak_language.strip():
+        parser.error("speak-language must not be empty.")
     if not 1 <= args.image_width <= 8192 or not 1 <= args.image_height <= 8192:
         parser.error("Use actual image dimensions in [1, 8192].")
     if not args.expected_frame.strip():
@@ -79,9 +96,14 @@ def build_state_machine(session):
     machine.add_state("ESTABLISH_BOND", bond, transitions={
         SUCCEED: "START_HEARTBEAT", ABORT: APP_FAILED, CANCEL: APP_FAILED, TIMEOUT: APP_FAILED,
     })
+    greeting = getattr(session, "startup_speak", None)
     machine.add_state("START_HEARTBEAT", CbState({SUCCEED, ABORT}, session.start_bond), transitions={
-        SUCCEED: "USE_DETECT_PEOPLE", ABORT: APP_FAILED,
+        SUCCEED: "STARTUP_SPEECH" if greeting else "USE_DETECT_PEOPLE", ABORT: APP_FAILED,
     })
+    if greeting:
+        machine.add_state("STARTUP_SPEECH", CbState({SUCCEED, ABORT}, greeting.execute), transitions={
+            SUCCEED: "USE_DETECT_PEOPLE", ABORT: APP_FAILED,
+        })
     acquire = ServiceState(UseCapability, "/capabilities/use_capability", UseCapabilityState.create_request, **options)
     machine.add_state("USE_DETECT_PEOPLE", acquire, transitions={
         SUCCEED: "VERIFY_PROVIDER", ABORT: "FREE_AFTER_FAILURE",
@@ -149,7 +171,7 @@ def run(args):
     previous = {sig: signal.signal(sig, lambda _sig, _frame: cancelled.set())
                 for sig in (signal.SIGINT, signal.SIGTERM)}
     blackboard = Blackboard()
-    for key, value in {"capability": CAPABILITY, "preferred_provider": PROVIDER,
+    for key, value in {"capability": CAPABILITY, "preferred_provider": getattr(args, "people_provider", PROVIDER),
                        "released": False, "message": "preview_not_started"}.items():
         blackboard[key] = value
     session = None
@@ -192,6 +214,14 @@ def run(args):
                 except Exception:
                     outcome = APP_FAILED
                     blackboard["message"] += "; speech_cleanup_exception"
+            greeting = session.startup_speak if getattr(args, "startup_text", "") else None
+            if greeting:
+                try:
+                    if greeting.release() != SUCCEED:
+                        outcome = APP_FAILED
+                except Exception:
+                    outcome = APP_FAILED
+                    blackboard["message"] += "; startup_speech_cleanup_exception"
             try:
                 for cleanup in (lambda: session.finish_preview("preview_finished"),
                                 lambda: session.release_fallback(blackboard)):
@@ -229,14 +259,18 @@ def run(args):
     camera_released = not camera or not camera.requested or camera.released
     speech = getattr(session, "speech", None) if session and getattr(args, "transcribe_speech", False) else None
     speech_released = not speech or not speech.requested or speech.released
-    if not motion_released or not camera_released or not speech_released:
+    greeting = session.startup_speak if session and getattr(args, "startup_text", "") else None
+    greeting_released = not greeting or not greeting.requested or greeting.released
+    if not motion_released or not camera_released or not speech_released or not greeting_released:
         outcome = APP_FAILED
     print(json.dumps({
         "outcome": outcome, "mode": "follow_person", "robot": args.robot,
-        "capability": CAPABILITY, "provider": PROVIDER,
+        "capability": CAPABILITY, "provider": getattr(args, "people_provider", PROVIDER),
         "dry_run": not motion_enabled, "motion_enabled": motion_enabled, "physical_success_verified": False,
         "message": blackboard["message"],
-        "released": blackboard["released"] and motion_released and camera_released and speech_released,
+        "released": blackboard["released"] and motion_released and camera_released and speech_released and greeting_released,
+        "startup_speech_status": greeting.status if greeting else "disabled",
+        "startup_speech_released": greeting_released,
         "speech_status": speech.status if speech else "disabled",
         "speech_released": speech_released,
         "transcripts_received": speech.transcripts_received if speech else 0,

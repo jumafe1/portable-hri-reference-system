@@ -1,0 +1,31 @@
+# Hardware/provider choices belong here; FollowPerson uses only /hri contracts.
+robot: nao
+application:
+  image_width: 320
+  image_height: 240
+  expected_frame: CameraTop_optical_frame
+  minimum_confidence: 0.65
+  target_height_ratio: 0.75
+  max_forward_speed: 0.10
+  people_provider: hri_yolo_providers/YoloDetectPeople
+  motion_provider: hri_naoqi_providers/NaoqiMoveVelocity
+  speak_provider: hri_naoqi_providers/NaoSpeak
+  speak_language: Spanish
+  startup_text: "Hola, vamos a interactuar."
+  speech_provider: hri_whisper_providers/WhisperTranscribeSpeech
+  speech_language: es
+  audio_input_format: naoqi_pcm_s16le
+  audio_topic: /nao/mic_stamped
+  audio_info_topic: /nao/mic_info
+  detections_topic: /yolo/detections
+  backend_remappings: []
+whisper_model: ~/.cache/whisper/base.pt
+yolo:
+  # Relative model paths are resolved against the workspace, not the shell's cwd.
+  model: yolov8n.pt
+  device: cpu
+  input_image_topic: /nao/camera/front/image_raw
+  image_reliability: 1
+  namespace: yolo
+  imgsz_height: 320
+  imgsz_width: 320

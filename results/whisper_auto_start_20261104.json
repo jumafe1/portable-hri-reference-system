@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-04",
+  "scope": "Automatic local Whisper startup with the existing portable TranscribeSpeech provider",
+  "head_touch_required": false,
+  "architecture": "Launch owns the worker process; YASMIN requests TranscribeSpeech through Capabilities2; application consumes portable /hri endpoints",
+  "activation": "transcribe_speech:=true confirm_listen:=ESCUCHAR during follow_person, or the existing standalone transcribe_speech mode",
+  "worker_default": "Started by launch when Whisper is the selected enabled speech provider; start_whisper_worker:=false supports external or simulated workers",
+  "model_default": "~/.cache/whisper/base.pt; override with whisper_model_path",
+  "startup": "Load and warm up with synthetic silence before exposing the capture service; no microphone subscription during model preparation",
+  "first_follow_admission_wait_s": 60,
+  "retryable_startup_non_admission": ["whisper_worker_unavailable", "audio_info_unavailable"],
+  "lost_admission_retried": false,
+  "lease_limit_s": 0.5,
+  "capture_window_s": 3,
+  "capture_policy": "Serial capture, inference, then another request while follow remains active; not uninterrupted recording or end-of-speech detection",
+  "diagnostics": ["model_loading", "model_ready", "audio_format_ready", "capture_started", "audio_received", "transcribing", "transcription_result", "audio_capture_timeout", "capture_cancelled", "result_discarded"],
+  "validation": {
+    "follow_unit_tests_passed": 213,
+    "worker_and_capture_unit_tests_passed": 23,
+    "standalone_transcribe_unit_tests_passed": 12,
+    "build_packages": ["hri_whisper_providers", "hri_reference_app"],
+    "build_passed": true,
+    "installed_scripts_verified": true,
+    "integration_probe_syntax_checked": true,
+    "live_ros_integration_run": false,
+    "local_real_model_preparation": {
+      "model": "base.pt",
+      "device": "cpu",
+      "cpu_threads": 2,
+      "input": "one second of synthetic silence; no microphone",
+      "elapsed_s": 10.87,
+      "passed": true
+    },
+    "logs": ["/tmp/hri-whisper-auto-follow-unit.log", "/tmp/hri-whisper-auto-worker-unit.log", "/tmp/hri-whisper-auto-transcribe-unit.log", "/tmp/hri-whisper-auto-build.log"]
+  },
+  "physical_microphone_transcription_verified": false,
+  "motion_commanded_during_validation": false,
+  "limitations": [
+    "The earlier physical run did not establish whether microphone samples arrived or why its result was missing",
+    "Model preparation outside an accepted capture removes cold initialization from its lease interval; it does not prove the cause of the earlier failure",
+    "Microphone recognition and simultaneous performance with YOLO require a new physical test",
+    "Inference creates gaps between three-second capture windows",
+    "A failed optional speech capability is disabled while visual follow continues"
+  ]
+}

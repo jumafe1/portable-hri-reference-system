@@ -10,6 +10,12 @@ install(
 )
 
 install(
+  PROGRAMS scripts/hri_diagnostics.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME hri_diagnostics
+)
+
+install(
   PROGRAMS scripts/speak_demo.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME speak_demo
@@ -40,6 +46,7 @@ install(
     scripts/follow_motion.py
     scripts/follow_camera.py
     scripts/follow_speech.py
+    scripts/startup_speak.py
     scripts/camera_geometry.py
     scripts/transcribe_mode.py
     scripts/graceful_server.py
@@ -47,7 +54,7 @@ install(
 )
 
 install(
-  DIRECTORY launch
+  DIRECTORY launch config
   DESTINATION share/${PROJECT_NAME}
 )
 

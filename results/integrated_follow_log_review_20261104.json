@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-04",
+  "launch_log": "/home/robotica/.ros/log/2026-11-04-18-09-01-801603-robotica-52324/launch.log",
+  "process_window_s": 320.9647150039673,
+  "follow_ros_log_bytes": 0,
+  "whisper_ros_log": "/home/robotica/.ros/log/python3_52328_1793833742876.log",
+  "terminal_summary_provided_by_operator": {
+    "frames_received": 929,
+    "tracked_frames": 345,
+    "commands_sent": 6042,
+    "preview_samples": 6044,
+    "image_recoveries": 28,
+    "person_recoveries": 3,
+    "transcripts_received": 1,
+    "stop_acknowledged": true,
+    "released": true,
+    "message": "cancelled_or_ros_shutdown"
+  },
+  "derived": {
+    "detections_per_process_window_s": 2.894399155335555,
+    "previous_passive_people_receipt_hz": 6.079146417427979,
+    "speech_queue_drop_warnings": 9
+  },
+  "findings": [
+    "WARN logging omitted follow details from both terminal and per-node ROS log; past pause durations cannot be recovered.",
+    "28 image recoveries and 9 discarded queued speech segments are observed; shared CPU pressure is a hypothesis, not established by these logs.",
+    "Whisper aborted with exit -6 after Ctrl+C; its daemon inference thread is not joined in current teardown, a possible cause requiring a separate fix/validation.",
+    "The application reported stop acknowledgement and capability release. These are software acknowledgements, not measured physical stopping.",
+    "The earlier passive measurement and this approximate process-window rate have different conditions/startup windows and are not a controlled performance comparison."
+  ],
+  "next_measurement": "Use record_diagnostics:=true for comparable runs with and without transcribe_speech; no network configuration changes."
+}

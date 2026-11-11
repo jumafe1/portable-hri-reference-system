@@ -18,7 +18,10 @@ SPEC.loader.exec_module(MODULE)
 
 class FollowLaunchArgumentsTest(unittest.TestCase):
     def arguments(self, mode="follow_person", **overrides):
-        values = dict(image_width="320", image_height="240", expected_frame="camera",
+        values = dict(people_provider="hri_yolo_providers/YoloDetectPeople",
+                      motion_provider="hri_naoqi_providers/NaoqiMoveVelocity",
+                      speak_provider="hri_naoqi_providers/NaoSpeak", startup_text="", speak_language="Spanish",
+                      image_width="320", image_height="240", expected_frame="camera",
                       minimum_confidence="", target_height_ratio="0.6", timeout="",
                       max_forward_speed="0.10",
                       orient_camera="false", camera_provider="hri_naoqi_providers/NaoqiOrientCamera",
@@ -201,6 +204,27 @@ class FollowLaunchArgumentsTest(unittest.TestCase):
             context.launch_configurations.update(mode="transcribe_speech", confirm="ESCUCHAR")
             with self.assertRaises(MODULE.PackageNotFoundError):
                 MODULE.launch_setup(context)
+
+    def test_auto_worker_only_for_selected_enabled_whisper(self):
+        context = LaunchContext()
+        for action in MODULE.generate_launch_description().entities:
+            if isinstance(action, DeclareLaunchArgument) and action.name not in {"mode", "robot"}:
+                action.execute(context)
+        with patch.object(MODULE, "get_package_share_directory", return_value="/tmp/whisper"), \
+                patch.object(MODULE, "Node") as node:
+            self.assertEqual(MODULE.whisper_worker_actions(context, "follow_person", "nao"), [])
+            node.assert_not_called()
+            context.launch_configurations.update(transcribe_speech="true", whisper_model_path="/local/base.pt")
+            self.assertEqual(len(MODULE.whisper_worker_actions(context, "follow_person", "nao")), 1)
+            parameters = node.call_args.kwargs["parameters"][0]
+            self.assertEqual(parameters, {"model_path": "/local/base.pt", "input_format": "naoqi_pcm_s16le",
+                                          "audio_topic": "/nao/mic_stamped", "audio_info_topic": "/nao/mic_info"})
+            MODULE.whisper_worker_actions(context, "transcribe_speech", "pepper")
+            self.assertEqual(node.call_args.kwargs["parameters"][0]["audio_topic"], "/pepper/mic_stamped")
+            context.launch_configurations["start_whisper_worker"] = "false"
+            self.assertEqual(MODULE.whisper_worker_actions(context, "follow_person", "nao"), [])
+            context.launch_configurations.update(start_whisper_worker="true", speech_provider="other/Transcriber")
+            self.assertEqual(MODULE.whisper_worker_actions(context, "follow_person", "nao"), [])
 
 
 if __name__ == "__main__":

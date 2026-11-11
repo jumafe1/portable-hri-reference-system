@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "hri_reference_app/
 import follow_speech as speech
 import follow_mode
 from follow_mode import parse_args
-from hri_capability_interfaces.msg import SpeechTranscript
+from hri_capability_interfaces.msg import SpeechCaptureStatus, SpeechTranscript
 
 
 class ArgumentsTest(unittest.TestCase):
@@ -90,36 +90,42 @@ class FollowSpeechTest(unittest.TestCase):
 
     def result(self, **overrides):
         data = dict(request_id=self.voice.request_id, provider=speech.PROVIDER, text="hola", language="es",
-                    success=True, message="transcribed")
+                    success=True, message="transcribed", segment_index=1, final=False)
         data.update(overrides)
         result = SpeechTranscript(**data)
         result.header.stamp.sec = 10
         return result
 
-    def test_serial_windows_wait_for_result_without_blocking(self):
+    def heartbeat(self, **overrides):
+        data = dict(request_id=self.voice.request_id, provider=speech.PROVIDER,
+                    state="listening", queued_segments=0, dropped_segments=0)
+        data.update(overrides)
+        status = SpeechCaptureStatus(**data)
+        status.header.stamp.sec = 10
+        self.voice.on_capture_status(status)
+
+    def test_single_stream_admission_handles_repeated_results_without_blocking(self):
         self.admit()
-        self.assertEqual(self.voice.status, "capturing")
-        self.clock += 4
-        for _ in range(20):
+        self.assertEqual(self.voice.status, "listening")
+        for index in range(1, 5):
+            self.clock += 1
+            self.heartbeat(state="speech_and_processing", queued_segments=1)
+            for _ in range(20):
+                self.voice.tick()
+            self.voice.on_result(self.result(segment_index=index))
             self.voice.tick()
-        self.assertEqual(self.voice.status, "processing")
+            self.assertEqual(self.voice.transcripts_received, index)
+            self.assertEqual(self.voice.status, "speech_and_processing")
         self.voice.transcribe.call_async.assert_called_once()
-        self.voice.on_result(self.result())
-        self.voice.tick()
-        self.assertEqual(self.voice.transcripts_received, 1)
-        self.assertEqual(self.voice.status, "ready")
-        self.voice.transcribe.call_async.assert_called_once()
-        self.voice.tick()
-        self.assertEqual(self.voice.transcribe.call_async.call_count, 2)
-        requests = [call.args[0] for call in self.voice.transcribe.call_async.call_args_list]
-        self.assertNotEqual(requests[0].request_id, requests[1].request_id)
-        self.assertEqual((requests[0].duration_sec, requests[0].language), (3.0, "es"))
+        request = self.voice.transcribe.call_async.call_args.args[0]
+        self.assertEqual((request.duration_sec, request.language, request.continuous, request.silence_sec),
+                         (10.0, "es", True, .8))
 
     def test_wrong_identity_ignored_and_early_result_waits_for_admission(self):
         future = self.start()
         self.voice.on_result(self.result(request_id="foreign"))
         self.voice.on_result(self.result(provider="other"))
-        self.assertIsNone(self.voice.result)
+        self.assertFalse(self.voice.results)
         self.voice.on_result(self.result())
         self.voice.on_result(self.result(text="replacement"))
         self.voice.tick()
@@ -127,34 +133,52 @@ class FollowSpeechTest(unittest.TestCase):
         self.admit(future)
         self.assertEqual(self.voice.transcripts_received, 1)
 
-    def test_internal_windows_continue_beyond_five_minutes_without_session_deadline(self):
-        started = self.clock
-        for _ in range(7):
-            self.admit()
-            self.clock += 50  # Slow but within each independent inference deadline.
+    def test_stream_continues_beyond_five_minutes_with_heartbeat(self):
+        self.admit()
+        for index in range(310):
+            self.clock += 1
+            self.heartbeat()
             self.voice.tick()
             self.assertTrue(self.voice.active)
-            self.voice.on_result(self.result())
-            self.voice.tick()
-            self.assertEqual(self.voice.status, "ready")
-        requests = [call.args[0] for call in self.voice.transcribe.call_async.call_args_list]
-        self.assertEqual(len(requests), 7)
-        self.assertEqual(len({request.request_id for request in requests}), 7)
-        self.assertTrue(all(request.duration_sec == speech.CAPTURE_WINDOW_SECONDS for request in requests))
-        self.assertEqual(self.voice.transcripts_received, 7)
-        self.assertGreater(self.clock - started, 300)
-        self.assertFalse(hasattr(self.voice.args, "record_duration"))
+        self.voice.on_result(self.result())
+        self.voice.tick()
+        self.voice.transcribe.call_async.assert_called_once()
+        self.assertEqual(self.voice.transcripts_received, 1)
         self.session.controller.stop.assert_not_called()
 
-    def test_silence_is_normal_and_has_no_transcript(self):
-        for message in ("no_speech", "no_speech_energy"):
-            with self.subTest(message=message):
-                self.admit()
-                self.voice.on_result(self.result(success=False, text="", message=message))
-                self.voice.tick()
-                self.assertEqual(self.voice.status, "ready")
-                self.assertTrue(self.voice.active)
-                self.assertEqual(self.voice.transcripts_received, 0)
+    def test_silence_is_normal_and_does_not_restart_capture(self):
+        self.admit()
+        for index, message in enumerate(("no_speech", "no_speech_energy"), 1):
+            self.voice.on_result(self.result(success=False, text="", message=message, segment_index=index))
+            self.voice.tick()
+            self.assertEqual(self.voice.status, "listening")
+            self.assertTrue(self.voice.active)
+            self.assertEqual(self.voice.transcripts_received, 0)
+        self.voice.transcribe.call_async.assert_called_once()
+
+    def test_duplicates_out_of_order_and_queue_are_bounded(self):
+        self.admit()
+        self.voice.on_result(self.result(segment_index=1))
+        self.voice.on_result(self.result(segment_index=1))
+        self.voice.on_result(self.result(segment_index=3))
+        self.voice.on_result(self.result(segment_index=2))
+        self.voice.tick()
+        self.voice.tick()
+        self.assertEqual(self.voice.transcripts_received, 2)
+        for index in range(4, 13):
+            self.voice.on_result(self.result(segment_index=index))
+        self.voice.tick()
+        self.assertEqual(self.voice.status, "disabled_result_queue_overflow")
+
+    def test_foreign_or_stale_heartbeat_does_not_keep_dead_stream_alive(self):
+        self.admit()
+        self.clock += 3.1
+        self.heartbeat(request_id="another-session")
+        stale = SpeechCaptureStatus(request_id=self.voice.request_id, provider=speech.PROVIDER, state="listening")
+        stale.header.stamp.sec = 1
+        self.voice.on_capture_status(stale)
+        self.voice.tick()
+        self.assertEqual(self.voice.status, "disabled_stream_timeout")
 
     def test_default_output_contains_no_recognized_text(self):
         self.admit()
@@ -199,6 +223,55 @@ class FollowSpeechTest(unittest.TestCase):
             self.voice.tick()
         self.voice.transcribe.call_async.assert_called_once()
 
+    def test_cold_worker_startup_retries_then_automatically_captures(self):
+        self.admit(accepted=False, message="whisper_worker_unavailable")
+        self.assertEqual(self.voice.status, "waiting_worker")
+        original_id = self.voice.request_id
+        self.clock += 15
+        self.voice.transcribe.call_async.return_value = self.future(done=False)
+        self.voice.tick()
+        self.assertEqual(self.voice.request_id, original_id)
+        self.admit(self.voice.future, accepted=False, message="audio_info_unavailable")
+        self.assertEqual(self.voice.status, "waiting_audio_info")
+        self.clock += 1
+        self.voice.transcribe.call_async.return_value = self.future(done=False)
+        self.voice.tick()
+        self.admit(self.voice.future)
+        self.assertEqual(self.voice.status, "listening")
+        self.assertEqual(self.voice.result_deadline, self.clock + 3)
+        self.voice.on_result(self.result())
+        self.voice.tick()
+        self.assertEqual(self.voice.transcripts_received, 1)
+        self.assertEqual(self.voice.status, "listening")
+        self.session.controller.stop.assert_not_called()
+
+    def test_startup_wait_is_bounded_and_cancellable(self):
+        self.admit(accepted=False, message="whisper_worker_unavailable")
+        self.session.cancelled.set()
+        self.clock += 10
+        self.voice.tick()
+        self.voice.transcribe.call_async.assert_called_once()
+        self.session.cancelled.clear()
+        self.clock += 51
+        self.voice.tick()
+        self.assertEqual(self.voice.status, "disabled_startup_timeout")
+        self.voice.transcribe.call_async.assert_called_once()
+
+    def test_ambiguous_admission_timeout_is_not_a_startup_retry(self):
+        self.admit(accepted=False, message="worker_admission_timeout")
+        self.assertFalse(self.voice.active)
+        self.assertEqual(self.voice.status, "disabled_admission_rejected")
+        self.voice.transcribe.call_async.assert_called_once()
+
+    def test_no_audio_failure_reports_cause_without_a_capture_timestamp(self):
+        self.admit()
+        result = self.result(success=False, text="", message="audio_capture_timeout")
+        result.header.stamp.sec = 0
+        self.voice.on_result(result)
+        self.voice.tick()
+        self.assertEqual(self.voice.status, "disabled_audio_capture_timeout")
+        self.session.controller.stop.assert_not_called()
+
     def test_wrong_admission_identity_disables_voice(self):
         self.admit(request_id="foreign")
         self.assertEqual(self.voice.status, "disabled_invalid_admission")
@@ -206,7 +279,7 @@ class FollowSpeechTest(unittest.TestCase):
     def test_result_timestamp_and_size_validation(self):
         for kind in ("past", "future", "oversized", "failed", "empty"):
             with self.subTest(kind=kind):
-                self.voice.active, self.voice.status, self.voice.result = True, "ready", None
+                self.voice.active, self.voice.status = True, "ready"
                 self.admit()
                 result = self.result()
                 if kind == "past":
@@ -224,11 +297,11 @@ class FollowSpeechTest(unittest.TestCase):
                 self.assertFalse(self.voice.active)
                 self.assertEqual(self.voice.transcripts_received, 0)
 
-    def test_missing_result_has_bounded_watchdog_not_follow_timeout(self):
+    def test_missing_heartbeat_disables_voice_without_stopping_follow(self):
         self.admit()
         self.clock += 69
         self.voice.tick()
-        self.assertEqual(self.voice.status, "disabled_result_timeout")
+        self.assertEqual(self.voice.status, "disabled_stream_timeout")
         self.session.controller.stop.assert_not_called()
 
     def test_cancel_freeze_and_late_results_cannot_start_capture(self):
@@ -240,7 +313,7 @@ class FollowSpeechTest(unittest.TestCase):
         self.voice.freeze("cancelled")
         self.voice.on_result(self.result())
         self.voice.tick()
-        self.assertIsNone(self.voice.result)
+        self.assertFalse(self.voice.results)
         self.voice.transcribe.call_async.assert_called_once()
         self.assertEqual(self.voice.status, "cancelled")
 

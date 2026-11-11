@@ -158,7 +158,13 @@ class TranscribeSession:
             while True:
                 response = self.call(self.transcribe, request)
                 # Only an explicit non-admission is retryable; never retry a lost reply.
-                if response.accepted or response.message != "lease_unavailable" or time.monotonic() >= admission_deadline:
+                retry_until = admission_deadline
+                reason = getattr(response, "message", "")
+                if reason in {"whisper_worker_unavailable", "audio_info_unavailable"}:
+                    retry_until = deadline - self.args.record_duration - 2.0
+                if (response.accepted or reason not in {
+                        "lease_unavailable", "whisper_worker_unavailable", "audio_info_unavailable"}
+                        or time.monotonic() >= retry_until):
                     break
                 if self.cancelled.wait(0.1) or self.bond.is_broken():
                     raise RuntimeError("cancelled_or_bond_lost")

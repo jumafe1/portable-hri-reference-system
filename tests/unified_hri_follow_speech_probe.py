@@ -17,7 +17,7 @@ import threading
 import time
 
 import rclpy
-from hri_capability_interfaces.msg import SpeechTranscript
+from hri_capability_interfaces.msg import SpeechCaptureStatus, SpeechTranscript
 from hri_capability_interfaces.srv import TranscribeSpeech
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
@@ -53,6 +53,10 @@ class SyntheticSpeech:
         self.lock = threading.Lock()
         self.requests, self.leases, self.results, self.pending = [], [], [], []
         self.capture_settings = []
+        self.stream_id = ""
+        self.segment_index = 0
+        self.status_at = 0.0
+        self.status_publisher = node.create_publisher(SpeechCaptureStatus, "/whisper/capture_status", 1)
         self.late_emitted = False
         self.publisher = node.create_publisher(SpeechTranscript, "/whisper/transcript", 10)
         self.subscription = node.create_subscription(
@@ -69,6 +73,8 @@ class SyntheticSpeech:
     def lease(self, message):
         with self.lock:
             self.leases.append((time.monotonic(), message.data))
+            if self.stream_id and not self.stream_id.startswith(message.data + ":"):
+                self.stream_id = ""
             if self.case == "visual_loss" and not message.data and self.requests:
                 self.pending.append((time.monotonic() + .2, self.requests[0][1],
                                      self.node.get_clock().now().nanoseconds,
@@ -78,25 +84,35 @@ class SyntheticSpeech:
         with self.lock:
             now = time.monotonic()
             self.requests.append((now, request.request_id))
-            self.capture_settings.append((request.duration_sec, request.language))
+            self.capture_settings.append((request.duration_sec, request.language, request.continuous, request.silence_sec))
             response.accepted = self.case != "reject"
             response.request_id = request.request_id
             response.message = "local_model_unavailable" if not response.accepted else "capture_started"
+            if response.accepted:
+                self.stream_id = request.request_id
             if response.accepted and self.case not in ("pending_cancel", "visual_loss"):
                 stamp = self.node.get_clock().now().nanoseconds
                 if self.case == "wrong_id":
-                    self.pending.append((now + request.duration_sec + .05, request.request_id + "-wrong", stamp,
+                    self.pending.append((now + 1.0, request.request_id + "-wrong", stamp,
                                          INVALID_PHRASE, True, "transcribed"))
                 if self.case == "stale":
                     stamp -= 120_000_000_000
                 silence = self.case == "repeated" and len(self.requests) == 1
-                self.pending.append((now + request.duration_sec + .15, request.request_id, stamp,
+                self.pending.append((now + 1.1, request.request_id, stamp,
                                      "" if silence else PHRASE,
                                      not silence, "no_speech" if silence else "transcribed"))
+                if self.case == "repeated":
+                    for delay in (2.1, 3.1):
+                        self.pending.append((now + delay, request.request_id, stamp, PHRASE, True, "transcribed"))
             return response
 
     def emit(self):
         with self.lock:
+            if self.stream_id and time.monotonic() >= self.status_at:
+                status = SpeechCaptureStatus(request_id=self.stream_id, state="listening")
+                status.header.stamp = self.node.get_clock().now().to_msg()
+                self.status_publisher.publish(status)
+                self.status_at = time.monotonic() + .25
             due = [entry for entry in self.pending if entry[0] <= time.monotonic()]
             self.pending = [entry for entry in self.pending if entry[0] > time.monotonic()]
         for _, identifier, stamp, text, success, reason in due:
@@ -104,6 +120,8 @@ class SyntheticSpeech:
             result.header.stamp.sec, result.header.stamp.nanosec = divmod(stamp, 1_000_000_000)
             result.request_id, result.text, result.language = identifier, text, "es"
             result.success, result.message = success, reason
+            self.segment_index += 1
+            result.segment_index, result.final = self.segment_index, False
             self.publisher.publish(result)
             if self.case == "visual_loss":
                 self.late_emitted = True
@@ -117,6 +135,7 @@ class SyntheticSpeech:
         if self.service is not None:
             self.node.destroy_service(self.service)
         self.node.destroy_publisher(self.publisher)
+        self.node.destroy_publisher(self.status_publisher)
         self.node.destroy_subscription(self.subscription)
         self.node.destroy_subscription(self.lease_subscription)
 
@@ -137,7 +156,7 @@ class VisualLossFrames(MotionFrames):
 def launch_case(case, path, fixture, speech):
     arguments = ["ros2", "launch", "hri_reference_app", "hri_app.launch.py", "robot:=nao",
                  "mode:=follow_person", "image_width:=320", "image_height:=240",
-                 "expected_frame:=test_camera"]
+                 "expected_frame:=test_camera", "start_whisper_worker:=false"]
     if case != "preview":
         arguments += ["enable_motion:=true", "confirm:=MOVER"]
     if case != "disabled":
@@ -168,7 +187,7 @@ def launch_case(case, path, fixture, speech):
                 minimum = 2 if case == "repeated" else 1
                 return len(valid) >= minimum and time.monotonic() - valid[-1][0] > .25
 
-            if not wait_until(lambda: observed() or process.poll() is not None, 25):
+            if not wait_until(lambda: observed() or process.poll() is not None, 75 if case == "absent" else 25):
                 raise RuntimeError("Expected speech/follow observations missing before Ctrl+C")
             if process.poll() is None:
                 interrupted = time.monotonic()
@@ -199,8 +218,8 @@ def inspect_case(case, fixture, speech, head, output, interrupted, loss_at=None)
         "bounded_commands": bounded(commands),
         "no_head_commands": not head,
         "text_privacy": (PHRASE in output) == (case == "print") and INVALID_PHRASE not in output,
-        "internal_spanish_windows": all(duration == 3.0 and language == "es"
-                                        for duration, language in capture_settings),
+        "segmented_spanish_stream": all(duration == 10.0 and language == "es" and continuous and silence == .8
+                                        for duration, language, continuous, silence in capture_settings),
     }
     if case == "preview":
         checks["no_motion"] = not commands and result.get("commands_sent") == 0
@@ -234,9 +253,9 @@ def inspect_case(case, fixture, speech, head, output, interrupted, loss_at=None)
         checks["unique_requests"] = len({entry[1] for entry in requests}) == len(requests)
         checks["wrong_results_ignored"] = all(entry[2] != INVALID_PHRASE for entry in results)
         if case == "repeated":
-            checks["silence_resumed"] = any(not entry[2] for entry in results) and len(requests) >= 3
-            checks["three_complete_windows_without_trial_expiry"] = (
-                len(results) >= 3 and valid[-1][0] - requests[0][0] >= 9.0)
+            checks["silence_resumed"] = any(not entry[2] for entry in results) and len(requests) == 1
+            checks["three_results_from_one_stream"] = (
+                len(results) >= 3 and valid[-1][0] - requests[0][0] >= 3.0)
             advancing = [stamp for stamp, values in commands if not zero(values)
                          and requests[0][0] <= stamp <= valid[-1][0]]
             gaps = [b - a for a, b in zip(advancing, advancing[1:])]

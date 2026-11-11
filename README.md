@@ -2,23 +2,47 @@
 
 Integración y pruebas reproducibles de la arquitectura portable HRI sobre ROS 2.
 
+## Entrada integrada para NAO
+
+Con el driver ya abierto, la nueva entrada inicia YOLO, Whisper, Capabilities2 y
+la aplicación YASMIN. Escucha frases y ejecuta FollowPerson; el saludo mediante
+`Speak` es opcional con `greet:=true`:
+
+```bash
+source ~/Documents/portable_hri_ws/install/setup.bash
+ros2 launch hri_reference_app aplicacion_hri.launch.py \
+  confirm_listen:=ESCUCHAR enable_motion:=true confirm:=MOVER
+```
+
+Cerrar primero las instancias anteriores de HRI, YOLO y Whisper. Sin las dos opciones
+de movimiento funciona en preview; los detalles de cámara, audio y proveedores están
+en `hri_reference_app/config/nao.yaml`. Conserva los límites de 0.1 m/s y objetivo
+visual 0.75. Aún no genera respuestas conversacionales: `Speak` permite el saludo opcional.
+Arquitectura, opciones y prueba conjunta en [APLICACION_HRI.md](APLICACION_HRI.md).
+
 ## Orientación opcional de cámara y transcripción local
 
 `OrientCamera` se integra de forma opcional en el ensayo de seguimiento, con
 pausa de la base durante los ajustes. `TranscribeSpeech` puede añadirse mediante
 `transcribe_speech:=true confirm_listen:=ESCUCHAR`, incluso en preview. Usa español
-por defecto, sin indicar duración ni idioma en el comando normal. Captura ventanas
-internas de 3 s, espera el procesamiento y repite mientras FollowPerson siga
-activo, salvo fallo de voz; no escucha sin interrupciones ni genera respuestas.
+por defecto, sin indicar duración ni idioma en el comando normal. Escucha de forma continua
+y segmenta la voz tras 0.8 s de silencio, con un máximo de 10 s por frase.
+El micrófono permanece activo durante la inferencia; hay como máximo dos frases
+pendientes. La escucha dura mientras FollowPerson siga activo, salvo fallo de voz.
+No genera respuestas.
 Conserva también un modo independiente de una ventana para pruebas.
-El worker Whisper se inicia aparte, como YOLO; el texto se observa en otra
+El mismo launch inicia el worker Whisper cuando se habilita voz y se selecciona
+su proveedor. Carga y prepara el modelo local antes de aceptar audio, sin usar
+los sensores táctiles. El texto se observa con `print_transcript:=true` o en otra
 terminal con `ros2 topic echo /hri/speech/transcript --field text`. Un fallo de voz
 deshabilita esa capacidad opcional sin desactivar las protecciones del seguimiento.
 Preparación, comandos, privacidad, fallback y limitaciones en
 [CAMERA_AND_SPEECH.md](CAMERA_AND_SPEECH.md). Este incremento tiene validación
-software, no pruebas físicas; las dependencias/modelo de Whisper para ASR real
-siguen pendientes. La configuración simplificada quedó verificada en
-[el informe más reciente](results/follow_person_speech_defaults_20261021.json).
+software; el modelo `base.pt` se cargó y procesó silencio sintético localmente.
+El autor confirmó transcripción del micrófono real en la versión previa.
+El autor también confirmó mejora de la transcripción con segmentación y captura paralela.
+El arranque integrado de todas las capacidades requiere su prueba conjunta en NAO.
+[Informe del arranque automático](results/whisper_auto_start_20261104.json).
 
 ## Seguimiento visual: preview y ensayo supervisado
 

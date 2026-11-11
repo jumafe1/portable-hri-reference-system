@@ -1,0 +1,87 @@
+diff --git a/yolo_bringup/launch/yolo.launch.py b/yolo_bringup/launch/yolo.launch.py
+index 1e935ba..ad12331 100644
+--- a/yolo_bringup/launch/yolo.launch.py
++++ b/yolo_bringup/launch/yolo.launch.py
+@@ -238,6 +238,7 @@ def generate_launch_description():
+             executable="yolo_node",
+             name="yolo_node",
+             namespace=namespace,
++            ros_arguments=["--log-level", LaunchConfiguration("log_level")],
+             parameters=[
+                 {
+                     "model_type": model_type,
+@@ -246,6 +247,7 @@ def generate_launch_description():
+                     "fuse_model": fuse_model,
+                     "yolo_encoding": yolo_encoding,
+                     "enable": enable,
++                    "enable_nnpack": LaunchConfiguration("enable_nnpack"),
+                     "threshold": threshold,
+                     "iou": iou,
+                     "imgsz_height": imgsz_height,
+@@ -266,6 +268,7 @@ def generate_launch_description():
+             executable="tracking_node",
+             name="tracking_node",
+             namespace=namespace,
++            ros_arguments=["--log-level", LaunchConfiguration("log_level")],
+             parameters=[{"tracker": tracker, "image_reliability": image_reliability}],
+             remappings=[("image_raw", input_image_topic)],
+             condition=IfCondition(PythonExpression([str(use_tracking)])),
+@@ -276,6 +279,7 @@ def generate_launch_description():
+             executable="detect_3d_node",
+             name="detect_3d_node",
+             namespace=namespace,
++            ros_arguments=["--log-level", LaunchConfiguration("log_level")],
+             parameters=[
+                 {
+                     "target_frame": target_frame,
+@@ -298,6 +302,7 @@ def generate_launch_description():
+             executable="debug_node",
+             name="debug_node",
+             namespace=namespace,
++            ros_arguments=["--log-level", LaunchConfiguration("log_level")],
+             parameters=[{"image_reliability": image_reliability}],
+             remappings=[
+                 ("image_raw", input_image_topic),
+@@ -356,6 +361,18 @@ def generate_launch_description():
+ 
+     return LaunchDescription(
+         [
++            DeclareLaunchArgument(
++                "enable_nnpack",
++                default_value="True",
++                choices=["True", "False"],
++                description="Enable the optional PyTorch NNPACK CPU backend",
++            ),
++            DeclareLaunchArgument(
++                "log_level",
++                default_value="info",
++                choices=["debug", "info", "warn", "error", "fatal"],
++                description="ROS logging threshold for YOLO nodes",
++            ),
+             use_tracking_cmd,
+             use_3d_cmd,
+             OpaqueFunction(function=run_yolo, args=[use_tracking, use_3d]),
+diff --git a/yolo_ros/yolo_ros/yolo_node.py b/yolo_ros/yolo_ros/yolo_node.py
+index 439b067..2e18069 100644
+--- a/yolo_ros/yolo_ros/yolo_node.py
++++ b/yolo_ros/yolo_ros/yolo_node.py
+@@ -69,6 +69,7 @@ class YoloNode(LifecycleNode):
+         self.declare_parameter("fuse_model", False)
+         self.declare_parameter("yolo_encoding", "bgr8")
+         self.declare_parameter("enable", True)
++        self.declare_parameter("enable_nnpack", True)
+         self.declare_parameter("image_reliability", QoSReliabilityPolicy.BEST_EFFORT)
+ 
+         self.declare_parameter("threshold", 0.5)
+@@ -161,6 +162,11 @@ class YoloNode(LifecycleNode):
+         """
+         self.get_logger().info(f"[{self.get_name()}] Activating...")
+ 
++        # Set the backend before loading/warming the model. On unsupported CPUs,
++        # NNPACK otherwise retries initialization and writes native warnings for
++        # every inference; those warnings bypass the ROS logger's severity.
++        torch.backends.nnpack.set_flags(self.get_parameter("enable_nnpack").value)
++
+         try:
+             self.yolo = self.type_to_model[self.model_type](self.model)
+             self.yolo.to(self.device)

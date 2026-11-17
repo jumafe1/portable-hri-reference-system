@@ -28,6 +28,20 @@ class FollowMotionArgumentsTest(unittest.TestCase):
         self.assertEqual(args.target_height_ratio, 0.75)
         self.assertEqual(args.max_forward_speed, 0.10)
 
+    def test_width_proxy_argument_is_optional_bounded_and_excludes_camera_orientation(self):
+        self.assertEqual(parse_args(self.BASE).target_width_ratio, 0.0)
+        for target in ("0.15", "0.33", "0.5"):
+            with self.subTest(target=target):
+                args = parse_args(self.BASE + ["--target-width-ratio", target])
+                self.assertEqual(args.target_width_ratio, float(target))
+                self.assertFalse(args.enable_motion)
+        for extra in (["--target-width-ratio", "0.1"], ["--target-width-ratio", "0.51"],
+                      ["--target-width-ratio", "-0.33"], ["--target-width-ratio", "nan"],
+                      ["--target-width-ratio", "0.33", "--orient-camera"]):
+            with self.subTest(extra=extra), redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    parse_args(self.BASE + extra)
+
     def test_configured_speed_is_accepted_without_enabling_motion(self):
         for maximum in ("0.01", "0.03", "0.05", "0.1"):
             with self.subTest(maximum=maximum):

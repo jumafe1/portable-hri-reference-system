@@ -1,0 +1,80 @@
+{
+  "date": "2026-11-11",
+  "measurements": {
+    "before": {
+      "source": "/tmp/hri-stream-timing-b35_veds/result.json",
+      "source_sha256": "7e1c5d907c37392608be0da228e56f2e705271ee6fb985b7decb7e37c5c7773b",
+      "yolo_image_reliability": "RELIABLE",
+      "streams": {
+        "camera": {
+          "observed_samples": 53,
+          "rate_between_first_and_last_receipt_hz": 1.7538706060703915,
+          "max_receipt_gap_s": 1.5605173719995946,
+          "median_receipt_gap_s": 0.505022654500408,
+          "gaps_above_0_75_s": 11
+        },
+        "yolo": {
+          "observed_samples": 53,
+          "rate_between_first_and_last_receipt_hz": 1.753497242046696,
+          "max_receipt_gap_s": 1.571613714000705,
+          "median_receipt_gap_s": 0.5007478910001737,
+          "gaps_above_0_75_s": 11
+        },
+        "people": {
+          "observed_samples": 53,
+          "rate_between_first_and_last_receipt_hz": 1.7535357624471128,
+          "max_receipt_gap_s": 1.5717647949995808,
+          "median_receipt_gap_s": 0.5004563475004034,
+          "gaps_above_0_75_s": 11
+        }
+      },
+      "matched_camera_to_yolo_samples": 53,
+      "camera_to_yolo_median_s": 0.09878901699994458,
+      "observer_max_spin_gap_s": 0.05330843899992033
+    },
+    "after": {
+      "source": "/tmp/hri-stream-timing-wychrzdz/result.json",
+      "source_sha256": "a60d527059cdeb727aa3ac9bb472162f1893d1ebd1472dd45268ecd1ac7435f6",
+      "yolo_image_reliability": "BEST_EFFORT",
+      "streams": {
+        "camera": {
+          "observed_samples": 73,
+          "rate_between_first_and_last_receipt_hz": 2.496529032776689,
+          "max_receipt_gap_s": 1.1322550810000394,
+          "median_receipt_gap_s": 0.29784768699983033,
+          "gaps_above_0_75_s": 5
+        },
+        "yolo": {
+          "observed_samples": 73,
+          "rate_between_first_and_last_receipt_hz": 2.495975427947244,
+          "max_receipt_gap_s": 1.1346146439991571,
+          "median_receipt_gap_s": 0.30532138499984285,
+          "gaps_above_0_75_s": 5
+        },
+        "people": {
+          "observed_samples": 72,
+          "rate_between_first_and_last_receipt_hz": 2.550550284433638,
+          "max_receipt_gap_s": 1.1345754049998504,
+          "median_receipt_gap_s": 0.30401259399968694,
+          "gaps_above_0_75_s": 4
+        }
+      },
+      "matched_camera_to_yolo_samples": 73,
+      "camera_to_yolo_median_s": 0.09980320599970582,
+      "observer_max_spin_gap_s": 0.05250615600016317
+    }
+  },
+  "findings": [
+    "The second 30-second observation received more camera images and fewer long gaps.",
+    "Both observations show approximately 0.10 s median camera-to-YOLO delay.",
+    "Five camera receipt intervals still exceeded the 0.75 s application freshness limit in the second observation."
+  ],
+  "limitations": [
+    "Sequential observations with uncontrolled upstream conditions do not establish a causal QoS improvement.",
+    "Best-effort observers may miss messages.",
+    "The second trial used follow preview with motion and speech disabled; no physical following success is inferred.",
+    "The driver stamps images after acquisition; measured source age does not include the entire acquisition delay."
+  ],
+  "status": "partial_observed_improvement_gaps_remain",
+  "changes_scope": "portable_hri_ws only; original driver launch and follow freshness/recovery rules unchanged"
+}

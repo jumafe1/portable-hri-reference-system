@@ -47,6 +47,8 @@ install(
     scripts/follow_camera.py
     scripts/follow_speech.py
     scripts/startup_speak.py
+    scripts/voice_commands.py
+    scripts/voice_command_policy.py
     scripts/camera_geometry.py
     scripts/transcribe_mode.py
     scripts/graceful_server.py

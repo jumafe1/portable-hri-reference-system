@@ -40,6 +40,8 @@ def parse_args(argv=None):
     parser.add_argument("--expected-frame", required=True)
     parser.add_argument("--minimum-confidence", type=float, default=0.65)
     parser.add_argument("--target-height-ratio", type=float, default=0.75)
+    parser.add_argument("--target-width-ratio", type=float, default=0.0,
+                        help="0 keeps the box-height proxy; [0.15, 0.50] follows by box width / image width.")
     parser.add_argument("--max-forward-speed", type=float, default=0.10,
                         help="Forward speed ceiling in m/s (0, 0.10]; also scales proportional response.")
     parser.add_argument("--enable-motion", action="store_true")
@@ -53,6 +55,7 @@ def parse_args(argv=None):
     parser.add_argument("--speech-provider", default=SPEECH_PROVIDER)
     parser.add_argument("--print-transcript", action="store_true",
                         help="Print recognized text; terminal/ROS launch logs may persist it.")
+    parser.add_argument("--voice-commands-config", default="", help="Enable voice pause/resume with this YAML vocabulary.")
     parser.add_argument("--confirm", default="")
     args = parser.parse_args(remove_ros_args(args=sys.argv)[1:] if argv is None else argv)
     if not re.fullmatch(r"[a-z][a-z0-9_]*", args.robot):
@@ -74,6 +77,11 @@ def parse_args(argv=None):
         parser.error("Follow preview arguments must be finite.")
     if not 0.5 <= args.minimum_confidence <= 1 or not 0.3 <= args.target_height_ratio <= 0.8:
         parser.error("Use confidence in [0.5, 1] and target height ratio in [0.3, 0.8].")
+    if not math.isfinite(args.target_width_ratio) or not (
+            args.target_width_ratio == 0 or 0.15 <= args.target_width_ratio <= 0.50):
+        parser.error("Use target width ratio 0 (box-height proxy) or within [0.15, 0.50].")
+    if args.target_width_ratio and args.orient_camera:
+        parser.error("Camera orientation calibrates the box-height proxy; use target width ratio 0 with it.")
     if not math.isfinite(args.max_forward_speed) or not 0 < args.max_forward_speed <= 0.10:
         parser.error("Follow max-forward-speed must be finite and within (0, 0.10] m/s.")
     if args.enable_motion and args.confirm != "MOVER":
@@ -82,6 +90,11 @@ def parse_args(argv=None):
         parser.error("Microphone capture requires --confirm-listen ESCUCHAR.")
     if not args.speech_provider.strip():
         parser.error("speech-provider must not be empty.")
+    if args.voice_commands_config:
+        if not args.transcribe_speech:
+            parser.error("Voice commands require speech recognition.")
+        from voice_command_policy import CommandPolicy
+        CommandPolicy(args.voice_commands_config)
     return args
 
 
@@ -112,6 +125,12 @@ def build_state_machine(session):
     motion = session.motion
     speech = getattr(session, "speech", None)
     following = "USE_MOVE_VELOCITY" if motion else "PREVIEW_FOLLOW"
+    voice = getattr(session, "voice", None)
+    if voice:
+        machine.add_state("CONFIGURE_VOICE", CbState({SUCCEED, ABORT}, voice.configure), transitions={
+            SUCCEED: following, ABORT: "FREE_AFTER_FAILURE",
+        })
+        following = "CONFIGURE_VOICE"
     machine.add_state("VERIFY_PROVIDER", CbState({SUCCEED, ABORT}, session.wait_ready), transitions={
         SUCCEED: "CONFIGURE_SPEECH" if speech else following, ABORT: "FREE_AFTER_FAILURE",
     })
@@ -214,6 +233,14 @@ def run(args):
                 except Exception:
                     outcome = APP_FAILED
                     blackboard["message"] += "; speech_cleanup_exception"
+            voice = getattr(session, "voice", None) if getattr(args, "voice_commands_config", "") else None
+            if voice:
+                try:
+                    if voice.release() != SUCCEED:
+                        outcome = APP_FAILED
+                except Exception:
+                    outcome = APP_FAILED
+                    blackboard["message"] += "; voice_cleanup_exception"
             greeting = session.startup_speak if getattr(args, "startup_text", "") else None
             if greeting:
                 try:
@@ -261,14 +288,18 @@ def run(args):
     speech_released = not speech or not speech.requested or speech.released
     greeting = session.startup_speak if session and getattr(args, "startup_text", "") else None
     greeting_released = not greeting or not greeting.requested or greeting.released
-    if not motion_released or not camera_released or not speech_released or not greeting_released:
+    voice = getattr(session, "voice", None) if session and getattr(args, "voice_commands_config", "") else None
+    voice_released = not voice or not voice.requested or voice.released
+    if not motion_released or not camera_released or not speech_released or not greeting_released or not voice_released:
         outcome = APP_FAILED
     print(json.dumps({
         "outcome": outcome, "mode": "follow_person", "robot": args.robot,
         "capability": CAPABILITY, "provider": getattr(args, "people_provider", PROVIDER),
         "dry_run": not motion_enabled, "motion_enabled": motion_enabled, "physical_success_verified": False,
         "message": blackboard["message"],
-        "released": blackboard["released"] and motion_released and camera_released and speech_released and greeting_released,
+        "released": blackboard["released"] and motion_released and camera_released and speech_released and greeting_released and voice_released,
+        "voice_status": voice.status if voice else "disabled", "voice_released": voice_released,
+        "voice_commands_received": voice.accepted_commands if voice else 0,
         "startup_speech_status": greeting.status if greeting else "disabled",
         "startup_speech_released": greeting_released,
         "speech_status": speech.status if speech else "disabled",

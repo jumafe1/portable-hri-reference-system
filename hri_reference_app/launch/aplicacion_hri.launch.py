@@ -5,11 +5,14 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 
 import yaml
 from ament_index_python.packages import get_package_prefix, get_package_share_directory
 from launch import LaunchContext, LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, LogInfo, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, LogInfo, OpaqueFunction, EmitEvent, RegisterEventHandler
+from launch.event_handlers import OnProcessExit
+from launch.events import Shutdown
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch.logging import launch_config
@@ -18,7 +21,7 @@ from launch_ros.actions import Node
 
 APPLICATION_KEYS = {
     "image_width", "image_height", "expected_frame", "minimum_confidence", "target_height_ratio",
-    "max_forward_speed", "people_provider", "motion_provider", "speak_provider", "speak_language",
+    "target_width_ratio", "max_forward_speed", "people_provider", "motion_provider", "speak_provider", "speak_language",
     "startup_text", "speech_provider", "speech_language", "audio_input_format", "audio_topic",
     "audio_info_topic", "detections_topic", "backend_remappings",
 }
@@ -86,9 +89,20 @@ def launch_setup(context):
         options[name] = str(boolean(context, name)).lower()
     for name in ("confirm", "confirm_listen", "log_level"):
         options[name] = argument(context, name)
-    for name in ("target_height_ratio", "max_forward_speed"):
+    for name in ("target_height_ratio", "target_width_ratio", "max_forward_speed"):
         if argument(context, name):
             options[name] = argument(context, name)
+    backend = argument(context, "speech_backend")
+    if backend not in {"vosk", "whisper"}:
+        raise RuntimeError("speech_backend must be vosk or whisper")
+    if backend == "whisper":
+        options["speech_provider"] = "hri_whisper_providers/WhisperTranscribeSpeech"
+    elif options["transcribe_speech"] == "true":
+        options["speech_provider"] = "hri_vosk_providers/VoskTranscribeSpeech"
+    voice_enabled = boolean(context, "voice_commands") and options["transcribe_speech"] == "true"
+    voice_config = argument(context, "voice_commands_config") or str(share / "config/voice_commands.yaml")
+    if voice_enabled:
+        options["voice_commands_config"] = voice_config
     if not boolean(context, "greet"):
         options["startup_text"] = ""
 
@@ -109,6 +123,32 @@ def launch_setup(context):
             argument(context, "whisper_model_path") or profile["whisper_model"], workspace)
 
     workers = []
+    if options["transcribe_speech"] == "true" and backend == "vosk":
+        get_package_share_directory("hri_vosk_providers")
+        module_path = share / "scripts/voice_command_policy.py"
+        if not module_path.is_file():
+            module_path = Path(get_package_prefix("hri_reference_app")) / "lib/hri_reference_app/voice_command_policy.py"
+        spec = importlib.util.spec_from_file_location("voice_policy_launch", module_path)
+        policy_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(policy_module)
+        policy = policy_module.CommandPolicy(voice_config)
+        def local_path(value):
+            path = Path(value).expanduser()
+            return path if path.is_absolute() else workspace / path
+        model = local_path(argument(context, "vosk_model_path") or profile["vosk"]["model"])
+        python = local_path(argument(context, "vosk_python") or profile["vosk"]["python"])
+        if not (model / "am/final.mdl").is_file() or not python.is_file():
+            raise RuntimeError("Vosk is not prepared. Run bash src/portable-hri-reference-system/scripts/setup_vosk.sh once.")
+        vosk = Node(package="hri_vosk_providers", executable="vosk_worker", name="vosk_worker",
+                    prefix=shlex.quote(str(python)), output="screen",
+                    ros_arguments=["--log-level", options["log_level"]], parameters=[{
+                        "model_path": str(model), "grammar": json.dumps(policy.grammar, ensure_ascii=False),
+                        "minimum_word_confidence": float(policy.config["minimum_word_confidence"]),
+                        "audio_topic": options["audio_topic"], "audio_info_topic": options["audio_info_topic"],
+                        "input_format": options["audio_input_format"],
+                    }])
+        workers.extend([vosk, RegisterEventHandler(OnProcessExit(target_action=vosk,
+            on_exit=[EmitEvent(event=Shutdown(reason="Vosk worker stopped"))]))])
     if boolean(context, "start_yolo"):
         if options["people_provider"] != "hri_yolo_providers/YoloDetectPeople":
             raise RuntimeError("Custom DetectPeople provider: use start_yolo:=false and its own backend")
@@ -152,7 +192,7 @@ def launch_setup(context):
                  parameters=[{"output_dir": str(directory), "launch_pid": os.getpid(),
                               "yolo_topic": options["detections_topic"]}]),
         ]
-    return [LogInfo(msg=f"HRI {robot}: perfil {profile_path}; seguimiento y transcripción. "
+    return [LogInfo(msg=f"HRI {robot}: perfil {profile_path}; seguimiento; voz={backend if options["transcribe_speech"] == "true" else "desactivada"}. "
                         f"Movimiento={options['enable_motion']}. Ctrl+C para terminar.")] + diagnostics + workers + application_actions
 
 
@@ -160,10 +200,15 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument("robot", default_value="nao"),
         DeclareLaunchArgument("profile", default_value="", description="Optional absolute robot YAML path"),
-        DeclareLaunchArgument("enable_motion", default_value="false"),
-        DeclareLaunchArgument("confirm", default_value="", description="MOVER for physical following"),
+        DeclareLaunchArgument("enable_motion", default_value="true", description="This command demo enables following; starts paused until Nao, sígueme"),
+        DeclareLaunchArgument("confirm", default_value="MOVER", description="MOVER for physical following"),
         DeclareLaunchArgument("transcribe_speech", default_value="true"),
-        DeclareLaunchArgument("confirm_listen", default_value="", description="ESCUCHAR to activate microphone"),
+        DeclareLaunchArgument("confirm_listen", default_value="ESCUCHAR", description="ESCUCHAR to activate microphone"),
+        DeclareLaunchArgument("speech_backend", default_value="vosk", description="vosk: command grammar; whisper: free transcription"),
+        DeclareLaunchArgument("voice_commands", default_value="true"),
+        DeclareLaunchArgument("voice_commands_config", default_value="", description="Default: config/voice_commands.yaml"),
+        DeclareLaunchArgument("vosk_model_path", default_value=""),
+        DeclareLaunchArgument("vosk_python", default_value=""),
         DeclareLaunchArgument("print_transcript", default_value="false"),
         DeclareLaunchArgument("log_level", default_value="warn",
                               description="warn: quiet HRI/Whisper/YOLO; info: detailed diagnostics"),
@@ -177,6 +222,8 @@ def generate_launch_description():
         DeclareLaunchArgument("yolo_model", default_value=""),
         DeclareLaunchArgument("whisper_model_path", default_value=""),
         DeclareLaunchArgument("target_height_ratio", default_value="", description="Default from profile: 0.75 for NAO"),
+        DeclareLaunchArgument("target_width_ratio", default_value="",
+                              description="Default from profile: 0.33 for NAO; 0 follows by box height instead"),
         DeclareLaunchArgument("max_forward_speed", default_value="", description="Default from profile: 0.1 m/s for NAO"),
         OpaqueFunction(function=launch_setup),
     ])

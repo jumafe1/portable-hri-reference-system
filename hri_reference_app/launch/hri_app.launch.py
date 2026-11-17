@@ -117,6 +117,7 @@ def application_arguments(context, mode, robot):
             width, height = (int(argument(context, name)) for name in ("image_width", "image_height"))
             confidence = float(argument(context, "minimum_confidence") or "0.65")
             ratio = float(argument(context, "target_height_ratio"))
+            width_ratio = float(argument(context, "target_width_ratio") or "0")
             max_forward_speed = float(argument(context, "max_forward_speed"))
         except ValueError as error:
             raise RuntimeError("Follow preview requires integer dimensions and numeric thresholds") from error
@@ -128,6 +129,8 @@ def application_arguments(context, mode, robot):
             raise RuntimeError("Follow preview arguments must be finite")
         if not 0.5 <= confidence <= 1 or not 0.3 <= ratio <= 0.8:
             raise RuntimeError("Use confidence [0.5,1], target_height_ratio [0.3,0.8]")
+        if not math.isfinite(width_ratio) or not (width_ratio == 0 or 0.15 <= width_ratio <= 0.50):
+            raise RuntimeError("target_width_ratio must be 0 (box-height proxy) or within [0.15,0.50]")
         if not math.isfinite(max_forward_speed) or not 0 < max_forward_speed <= 0.10:
             raise RuntimeError("max_forward_speed must be finite and within (0, 0.10] m/s")
         enabled = argument(context, "enable_motion").strip().lower()
@@ -141,6 +144,8 @@ def application_arguments(context, mode, robot):
         if orientation not in {"true", "false"}:
             raise RuntimeError("orient_camera must be true or false")
         if orientation == "true":
+            if width_ratio:
+                raise RuntimeError("orient_camera calibrates the box-height proxy; set target_width_ratio:=0")
             provider = argument(context, "camera_provider").strip()
             if not provider:
                 raise RuntimeError("camera_provider cannot be empty")
@@ -152,9 +157,15 @@ def application_arguments(context, mode, robot):
             if argument(context, "confirm_listen") != "ESCUCHAR":
                 raise RuntimeError("Follow microphone capture requires confirm_listen:=ESCUCHAR")
             args += ["--transcribe-speech", "--confirm-listen", "ESCUCHAR"] + speech_arguments(context)
+        voice_config = argument(context, "voice_commands_config")
+        if voice_config:
+            if speech != "true":
+                raise RuntimeError("Voice commands require transcribe_speech:=true")
+            args += ["--voice-commands-config", voice_config, "--speak-language", argument(context, "speak_language")]
         return args + ["--image-width", str(width), "--image-height", str(height),
                        "--expected-frame", argument(context, "expected_frame"),
                        "--minimum-confidence", str(confidence), "--target-height-ratio", str(ratio),
+                       "--target-width-ratio", str(width_ratio),
                        "--max-forward-speed", str(max_forward_speed)]
 
     if argument(context, "confirm") != "MOVER":
@@ -239,7 +250,7 @@ def launch_setup(context):
             providers.append(argument(context, "motion_provider"))
             if "--orient-camera" in app_args:
                 providers.append(argument(context, "camera_provider"))
-        if "--startup-text" in app_args:
+        if "--startup-text" in app_args or "--voice-commands-config" in app_args:
             providers.append(argument(context, "speak_provider"))
         packages.update(provider.split("/", 1)[0] for provider in providers)
     else:
@@ -343,6 +354,7 @@ def generate_launch_description():
         DeclareLaunchArgument("motion_provider", default_value="hri_naoqi_providers/NaoqiMoveVelocity"),
         DeclareLaunchArgument("speak_provider", default_value="hri_naoqi_providers/NaoSpeak"),
         DeclareLaunchArgument("speak_language", default_value="Spanish"),
+        DeclareLaunchArgument("voice_commands_config", default_value="", description="YAML command map; empty disables voice control"),
         DeclareLaunchArgument("startup_text", default_value="", description="Optional short greeting before listening/motion"),
         DeclareLaunchArgument("backend_remappings", default_value="[]", description="Provider backend ROS name pairs as JSON"),
         DeclareLaunchArgument("mode", description=", ".join(sorted(MODES))),
@@ -354,6 +366,7 @@ def generate_launch_description():
         DeclareLaunchArgument("image_height", default_value="0", description="Actual camera height, required for follow preview"),
         DeclareLaunchArgument("expected_frame", default_value="", description="Exact camera image header.frame_id"),
         DeclareLaunchArgument("target_height_ratio", default_value="0.75", description="Visual box-height fraction, NOT meters"),
+        DeclareLaunchArgument("target_width_ratio", default_value="0", description="0: follow by box height; [0.15,0.50]: follow by box-width fraction, NOT meters"),
         DeclareLaunchArgument("max_forward_speed", default_value="0.10", description="Follow forward ceiling in m/s (0,0.10]; scales proportional response, not a constant speed"),
         DeclareLaunchArgument("enable_motion", default_value="false", description="Explicit opt-in for supervised follow motion"),
         DeclareLaunchArgument("orient_camera", default_value="false", description="Optional pitch orientation within follow trial; no head actuation in preview"),

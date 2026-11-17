@@ -18,12 +18,12 @@ SPEC.loader.exec_module(MODULE)
 
 class FollowLaunchArgumentsTest(unittest.TestCase):
     def arguments(self, mode="follow_person", **overrides):
-        values = dict(people_provider="hri_yolo_providers/YoloDetectPeople",
+        values = dict(voice_commands_config="", people_provider="hri_yolo_providers/YoloDetectPeople",
                       motion_provider="hri_naoqi_providers/NaoqiMoveVelocity",
                       speak_provider="hri_naoqi_providers/NaoSpeak", startup_text="", speak_language="Spanish",
                       image_width="320", image_height="240", expected_frame="camera",
                       minimum_confidence="", target_height_ratio="0.6", timeout="",
-                      max_forward_speed="0.10",
+                      max_forward_speed="0.10", target_width_ratio="0",
                       orient_camera="false", camera_provider="hri_naoqi_providers/NaoqiOrientCamera",
                       transcribe_speech="false", confirm_listen="",
                       record_duration="", speech_language="es",
@@ -72,6 +72,29 @@ class FollowLaunchArgumentsTest(unittest.TestCase):
             for maximum in ("0", "-0.1", "0.10001", "nan", "inf", "-inf", "true"):
                 with self.subTest(enabled=enabled, maximum=maximum), self.assertRaises(RuntimeError):
                     self.arguments(max_forward_speed=maximum, enable_motion=enabled, confirm="MOVER")
+
+    def test_width_proxy_defaults_to_disabled_and_forwards_valid_targets(self):
+        self.assertEqual(float(self.value(self.arguments(), "--target-width-ratio")), 0.0)
+        self.assertEqual(float(self.value(self.arguments(target_width_ratio=""), "--target-width-ratio")), 0.0)
+        for target in ("0.15", "0.33", "0.5"):
+            with self.subTest(target=target):
+                args = self.arguments(target_width_ratio=target)
+                self.assertEqual(float(self.value(args, "--target-width-ratio")), float(target))
+                self.assertNotIn("--enable-motion", args)
+        context = LaunchContext()
+        declaration = next(action for action in MODULE.generate_launch_description().entities
+                           if isinstance(action, DeclareLaunchArgument)
+                           and action.name == "target_width_ratio")
+        declaration.execute(context)
+        self.assertEqual(float(context.launch_configurations["target_width_ratio"]), 0.0)
+
+    def test_invalid_width_target_or_camera_combination_is_rejected(self):
+        for target in ("0.1", "0.51", "-0.33", "nan", "inf", "true"):
+            with self.subTest(target=target), self.assertRaises(RuntimeError):
+                self.arguments(target_width_ratio=target)
+        with self.assertRaises(RuntimeError):
+            self.arguments(target_width_ratio="0.33", orient_camera="true",
+                           enable_motion="true", confirm="MOVER")
 
     def test_follow_motion_has_no_total_time_flags(self):
         args = self.arguments(enable_motion="true", confirm="MOVER")

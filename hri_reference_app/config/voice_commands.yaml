@@ -1,0 +1,12 @@
+# Exact complete phrases only; no partial recognition or substring commands.
+wake_words: [nao]
+start_paused: true
+max_command_age_s: 4.0
+echo_guard_s: 1.0
+minimum_word_confidence: 0.80
+commands:
+  pause: [detente, para, quédate quieto, no me sigas, no vengas conmigo, no te muevas, no sigas]
+  follow: [sígueme, ven conmigo, vuelve a seguirme]
+responses:
+  pause: ["Aquí me quedo.", "De acuerdo, me detengo.", "Me quedo quieto."]
+  follow: ["Te voy a seguir.", "De acuerdo, voy contigo.", "Vamos, te sigo."]

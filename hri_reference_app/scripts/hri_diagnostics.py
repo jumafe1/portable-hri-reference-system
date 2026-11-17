@@ -14,6 +14,7 @@ FOLLOW_FIELDS = (
     "source_stamp_ns", "source_age_s", "receipt_age_s", "image_recovery_active",
     "image_recovery_frames", "image_recoveries", "person_wait_active",
     "person_wait_reason", "person_wait_frames", "person_recoveries", "speech_status",
+    "voice_status", "voice_paused", "voice_commands_received",
     "transcripts_received", "camera_status",
 )
 PERCEPTION_FIELDS = ("age_at_receipt_s", "receipt_gap_s", "people_count", "eligible_count",
@@ -72,7 +73,7 @@ def proc_stat(text):
 
 
 class Resources:
-    LABELS = {"yolo_node", "whisper_worker", "hri_app", "capabilities2_server_node", "hri_diagnostics"}
+    LABELS = {"yolo_node", "whisper_worker", "vosk_worker", "hri_app", "capabilities2_server_node", "hri_diagnostics"}
 
     def __init__(self, root_pid, proc_root="/proc"):
         self.root_pid = root_pid

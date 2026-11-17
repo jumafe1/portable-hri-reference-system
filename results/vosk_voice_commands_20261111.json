@@ -1,0 +1,118 @@
+{
+  "date": "2026-11-11",
+  "branch": "perf/whisper-follow-cpu",
+  "scope": "Vosk command recognition and latched follow pause with Speak responses",
+  "configuration": {
+    "model": "vosk-model-small-es-0.42",
+    "vosk": "0.3.45",
+    "default_start_paused": true,
+    "max_forward_speed_m_s": 0.1,
+    "target_height_ratio": 0.75
+  },
+  "build": "PASS: hri_speech_providers, hri_vosk_providers, hri_whisper_providers, hri_reference_app",
+  "unit_tests": {
+    "application_full_suite": 287,
+    "whisper_regressions": 37,
+    "vosk_worker_and_stream": 12,
+    "additional_cancellation_case": "PASS in targeted command suite"
+  },
+  "real_vosk_synthetic_spanish": [
+    {
+      "synthetic_phrase": "nao detente",
+      "results": [
+        {
+          "text": "nao detente",
+          "intent": "pause"
+        }
+      ],
+      "audio_seconds": 3.0035625,
+      "decode_seconds": 0.109
+    },
+    {
+      "synthetic_phrase": "nao sígueme",
+      "results": [
+        {
+          "text": "nao sígueme",
+          "intent": "follow"
+        }
+      ],
+      "audio_seconds": 2.9433125,
+      "decode_seconds": 0.1
+    },
+    {
+      "synthetic_phrase": "nao quédate quieto",
+      "results": [
+        {
+          "text": "nao quédate quieto",
+          "intent": "pause"
+        }
+      ],
+      "audio_seconds": 3.356125,
+      "decode_seconds": 0.14
+    },
+    {
+      "synthetic_phrase": "nao no me sigas",
+      "results": [
+        {
+          "text": "nao no me sigas",
+          "intent": "pause"
+        }
+      ],
+      "audio_seconds": 3.2635,
+      "decode_seconds": 0.143
+    },
+    {
+      "synthetic_phrase": "nao ven conmigo",
+      "results": [
+        {
+          "text": "nao ven conmigo",
+          "intent": "follow"
+        }
+      ],
+      "audio_seconds": 3.2255,
+      "decode_seconds": 0.121
+    },
+    {
+      "synthetic_phrase": "nao vuelve a seguirme",
+      "results": [
+        {
+          "text": "nao vuelve a seguirme",
+          "intent": "follow"
+        }
+      ],
+      "audio_seconds": 3.465,
+      "decode_seconds": 0.134
+    },
+    {
+      "synthetic_phrase": "hola cómo estás",
+      "results": [],
+      "audio_seconds": 3.1968125,
+      "decode_seconds": 0.12
+    },
+    {
+      "synthetic_phrase": "te voy a seguir",
+      "results": [],
+      "audio_seconds": 3.1241875,
+      "decode_seconds": 0.107
+    },
+    {
+      "synthetic_phrase": "nao no vengas conmigo",
+      "results": [
+        {
+          "text": "nao no vengas conmigo",
+          "intent": "pause"
+        }
+      ],
+      "audio_seconds": 3.5416875,
+      "decode_seconds": 0.122
+    }
+  ],
+  "dds_integration": {
+    "status": "blocked_before_node_creation",
+    "reason": "sandbox network restriction; CycloneDDS failed to enumerate interfaces for udp",
+    "probe": "tests/vosk_voice_probe.py"
+  },
+  "physical_success_verified": false,
+  "real_audio_captured": false,
+  "remaining": "Operator test with NAO microphone, Speak and follow; integrated CPU comparison not measured."
+}

@@ -15,6 +15,24 @@ from dataclasses import dataclass
 import math
 
 
+# Horizontal error is normalized by half the image width. At 320 px, keep
+# the distance-based forward proposal through +/-24 px, taper it to one third
+# at +/-60 px and hold that third beyond: the base keeps advancing slowly
+# while it turns toward the person instead of stopping to turn in place.
+# These margins scale with image resolution.
+_FULL_FORWARD_HEADING_ERROR = 0.15
+_SLOW_FORWARD_HEADING_ERROR = 0.375
+_MIN_FORWARD_HEADING_SCALE = 1 / 3
+
+# Optional width proxy (profile-selected). Box height saturates against the
+# image border long before a standing person is near a low-mounted camera;
+# box width keeps growing. Width/image_width depends on the camera's horizontal
+# field of view, so each robot profile sets its own target. Advance stops inside
+# target +/- band; the forward ceiling is reached this far below the target.
+_WIDTH_BAND = 0.03
+_WIDTH_FULL_SPEED_SPAN = 0.15
+
+
 @dataclass(frozen=True)
 class Config:
     image_width: int
@@ -23,6 +41,8 @@ class Config:
     target_height_ratio: float = 0.75
     max_age: float = 0.75
     max_forward_speed: float = 0.10
+    # 0 keeps the box-height proxy; a positive value selects the box-width proxy.
+    target_width_ratio: float = 0.0
 
     def __post_init__(self) -> None:
         for value in (self.image_width, self.image_height):
@@ -36,6 +56,9 @@ class Config:
             raise ValueError("max_age must be positive and finite")
         if not _finite(self.max_forward_speed) or not 0 < self.max_forward_speed <= 0.10:
             raise ValueError("max_forward_speed must be finite and within (0, 0.10] m/s")
+        if not _finite(self.target_width_ratio) or not (
+                self.target_width_ratio == 0 or 0.05 < self.target_width_ratio < 0.95):
+            raise ValueError("target_width_ratio must be 0 (disabled) or within (0.05, 0.95)")
 
 
 @dataclass(frozen=True)
@@ -178,34 +201,53 @@ class Controller:
         if self._count < 3:
             return self._zero("acquiring_target")
         self._locked = True
-        height_ratio = person.height / self.config.image_height
+        use_width = self.config.target_width_ratio > 0
         ex, ey = self._edge_tolerance()
-        clipped = (
+        side_clipped = (
             person.center_x - person.width / 2 <= ex
-            or person.center_y - person.height / 2 <= ey
             or person.center_x + person.width / 2 >= self.config.image_width - ex
+        )
+        vertically_clipped = (
+            person.center_y - person.height / 2 <= ey
             or person.center_y + person.height / 2 >= self.config.image_height - ey
         )
-        if clipped:
+        # A box cut at the top/bottom still has a usable width and center; one
+        # cut at the left/right has neither, so it stops both axes in any mode.
+        if side_clipped or (vertically_clipped and not use_width):
             return self._zero("clipped_detection")
-        if height_ratio_override is not None:
-            if not _finite(height_ratio_override) or height_ratio_override <= 0:
-                return self._reject("invalid_angular_height_ratio")
-            height_ratio = height_ratio_override
+        if use_width:
+            # The angular-height override belongs to the height proxy; startup
+            # validation refuses camera orientation together with this mode.
+            size_ratio = person.width / self.config.image_width
+            target, band = self.config.target_width_ratio, _WIDTH_BAND
+            gain = self.config.max_forward_speed / _WIDTH_FULL_SPEED_SPAN
+        else:
+            size_ratio = person.height / self.config.image_height
+            if height_ratio_override is not None:
+                if not _finite(height_ratio_override) or height_ratio_override <= 0:
+                    return self._reject("invalid_angular_height_ratio")
+                size_ratio = height_ratio_override
+            target, band = self.config.target_height_ratio, 0.05
+            # Scale the response as well as its ceiling; 0.03 m/s preserves the
+            # historical gain.
+            gain = 0.10 * (self.config.max_forward_speed / 0.03)
         error = (person.center_x - self.config.image_width / 2) / (self.config.image_width / 2)
         wz = 0.0 if abs(error) <= 0.08 else max(-0.10, min(0.10, -0.20 * error))
         # Apparent size gates advance, not centering. This proposal is
         # not clearance to rotate physically; clipped boxes remain zero above.
-        if height_ratio > self.config.target_height_ratio + 0.05:
+        if size_ratio > target + band:
             reason = "preview_centering_close" if wz != 0 else "target_too_close_visual"
             self._decision = Decision(0.0, wz, reason, True)
             return self._decision
         vx = 0.0
-        if abs(error) <= 0.15 and height_ratio < self.config.target_height_ratio - 0.05:
-            # Scale the response as well as its ceiling; 0.03 m/s preserves the
-            # historical gain. Apparent size remains a proxy, not metric distance.
-            gain = 0.10 * (self.config.max_forward_speed / 0.03)
-            vx = min(self.config.max_forward_speed, gain * (self.config.target_height_ratio - height_ratio))
+        if size_ratio < target - band:
+            # Apparent size remains a proxy, not metric distance.
+            vx = min(self.config.max_forward_speed, gain * (target - size_ratio))
+            # Apply after the speed ceiling so even a distant target slows
+            # progressively while turning, down to one third of its proposal.
+            off_center = ((abs(error) - _FULL_FORWARD_HEADING_ERROR)
+                          / (_SLOW_FORWARD_HEADING_ERROR - _FULL_FORWARD_HEADING_ERROR))
+            vx *= 1 - (1 - _MIN_FORWARD_HEADING_SCALE) * max(0.0, min(1.0, off_center))
         reason = "preview_following" if vx != 0 or wz != 0 else "target_in_visual_deadband"
         self._decision = Decision(vx, wz, reason, True)
         return self._decision

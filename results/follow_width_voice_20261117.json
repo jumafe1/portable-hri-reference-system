@@ -1,0 +1,121 @@
+{
+ "date": "2026-11-17",
+ "robot": "nao",
+ "scope": "One physical follow session with Vosk voice commands after switching the NAO profile to the box-width proximity proxy and to slow advance while turning. Software decisions are logged; physical distance, braking and recognition accuracy were not measured.",
+ "command": "ros2 launch hri_reference_app aplicacion_hri.launch.py record_diagnostics:=true",
+ "configuration": {
+  "image": "320x240",
+  "expected_frame": "CameraTop_optical_frame",
+  "minimum_confidence": 0.65,
+  "target_width_ratio": 0.33,
+  "target_height_ratio_unused_in_width_mode": 0.75,
+  "max_forward_speed_m_s": 0.1,
+  "speech_backend": "vosk",
+  "voice_commands": true,
+  "start_paused": true,
+  "orient_camera": false,
+  "forward_scale_when_off_center": "1 through +/-24 px, linear to 1/3 at +/-60 px, 1/3 beyond"
+ },
+ "source": {
+  "directory": "~/.ros/log/2026-11-17-11-57-39-339999-robotica-36471/hri_diagnostics/",
+  "summary_sha256": "23d3e4cdf1300cf828c0ee69056bc95b2dbe4d92118acf239daf6c53caebc2e1",
+  "events_sha256": "f1cfc311fbc4859ea41921aa00110c308e55336baec4ee06bad224c8ab684088",
+  "note": "Local logs, not versioned. No images, audio or transcript text are stored."
+ },
+ "session": {
+  "observer_elapsed_s": 179.77,
+  "ended_by": "operator Ctrl+C",
+  "voice_timeline_s": {
+   "follow_command_accepted": 14.0,
+   "following_started": 19.0,
+   "pause_command_accepted": 170.4,
+   "paused": 173.4
+  },
+  "voice_commands_accepted": 2,
+  "transcripts_received": 3,
+  "final_follow_reason": "paused_by_voice",
+  "final_speech_status": "listening",
+  "image_recoveries": 0,
+  "person_recoveries": 6,
+  "reason_seconds_observed": {
+   "voice_unavailable": 0.05,
+   "paused_by_voice": 16.32,
+   "voice_reply_hold": 7.94,
+   "reacquiring_after_voice": 0.92,
+   "preview_following": 129.54,
+   "clipped_detection": 2.89,
+   "preview_centering_close": 5.65,
+   "target_in_visual_deadband": 6.1,
+   "person_missing": 1.87,
+   "reacquiring_person": 2.49,
+   "ambiguous_people": 1.41,
+   "target_too_close_visual": 1.48
+  },
+  "people_stream": {
+   "samples": 829,
+   "recent_hz_last_30_s": 5.01,
+   "max_receipt_gap_s": 0.554,
+   "source_age_p95_s_last_30_s": 0.269
+  },
+  "system_cpu_percent_excluding_first_10_s": {
+   "mean": 64.48,
+   "median": 63.9,
+   "samples": 169
+  },
+  "logical_cpus": 4
+ },
+ "single_person_frames": {
+  "count": 595,
+  "with_forward_proposal": 417,
+  "width_ratio_when_advancing": {
+   "min": 0.131,
+   "median": 0.231,
+   "max": 0.3
+  },
+  "forward_m_s_when_advancing": {
+   "min": 0.007,
+   "median": 0.036,
+   "max": 0.1
+  },
+  "width_ratio_in_deadband": {
+   "min": 0.302,
+   "median": 0.308,
+   "max": 0.318
+  },
+  "vertically_clipped_boxes": 262,
+  "vertically_clipped_boxes_with_forward_proposal": 136,
+  "advancing_at_or_beyond_60_px_off_center": 137,
+  "forward_m_s_at_or_beyond_60_px_off_center": {
+   "min": 0.007,
+   "median": 0.017,
+   "max": 0.033
+  },
+  "method": "Distinct perception snapshots in events.jsonl with exactly one eligible person; clipping counted within 1 px of the top/bottom border."
+ },
+ "author_observation": {
+  "physical_follow_confirmed": true,
+  "statement": "The author reported that the session worked perfectly.",
+  "stop_distance_measured": false,
+  "recognition_accuracy_measured": false
+ },
+ "software_checks_before_the_session": {
+  "controller_unit_tests_passed": 61,
+  "other_unit_tests_passed": 221,
+  "suites": "test_follow_controller; test_follow_motion, test_follow_session, test_follow_camera, test_voice_commands, test_camera_geometry, test_follow_launch, test_integrated_hri, test_follow_mode, test_follow_speech, test_hri_diagnostics",
+  "offline_replay": {
+   "recorded_single_person_boxes": 1143,
+   "sessions": "2026-11-04 and 2026-11-11 hri_diagnostics logs",
+   "forward_proposals_height_proxy_0_75": 528,
+   "forward_proposals_width_proxy_0_33": 659,
+   "forward_proposals_width_proxy_and_slow_advance_while_turning": 792,
+   "note": "Each box evaluated alone after three identical observations; not a physical test."
+  }
+ },
+ "limits": [
+  "Single session; no controlled comparison against the height proxy on the same day and scene.",
+  "The distance at which the robot holds was not measured; 0.33 is a fraction of image width, not meters.",
+  "Voice recovery after an audio stream timeout is unchanged and was not exercised (speech stayed available).",
+  "hri_app returned exit code 1 on Ctrl+C; worker processes finished cleanly.",
+  "Changes are local and uncommitted on branch perf/whisper-follow-cpu when this file was written."
+ ]
+}

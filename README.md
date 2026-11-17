@@ -4,25 +4,30 @@ Integración y pruebas reproducibles de la arquitectura portable HRI sobre ROS 2
 
 ## Entrada integrada para NAO
 
-Con el driver ya abierto, la nueva entrada inicia YOLO, Whisper, Capabilities2 y
-la aplicación YASMIN. Escucha frases y ejecuta FollowPerson; el saludo mediante
-`Speak` es opcional con `greet:=true`:
+Con el driver abierto, esta rama inicia YOLO, Vosk, Capabilities2 y la aplicación
+YASMIN. La base empieza en pausa y escucha órdenes completas con «Nao»:
 
 ```bash
 source ~/Documents/portable_hri_ws/install/setup.bash
-ros2 launch hri_reference_app aplicacion_hri.launch.py \
-  confirm_listen:=ESCUCHAR enable_motion:=true confirm:=MOVER
+ros2 launch hri_reference_app aplicacion_hri.launch.py
 ```
 
-Cerrar primero las instancias anteriores de HRI, YOLO y Whisper. Sin las dos opciones
-de movimiento funciona en preview; los detalles de cámara, audio y proveedores están
-en `hri_reference_app/config/nao.yaml`. Conserva los límites de 0.1 m/s y objetivo
-visual 0.75. Aún no genera respuestas conversacionales: `Speak` permite el saludo opcional.
-Arquitectura, opciones y prueba conjunta en [APLICACION_HRI.md](APLICACION_HRI.md).
+«Nao, sígueme» habilita el seguimiento; «Nao, detente» lo pausa hasta otra orden.
+`Speak` responde con una frase del grupo correspondiente. El saludo sigue desactivado.
+Este lanzamiento habilita micrófono y movimiento por configuración; añadir
+`enable_motion:=false` para probar sin movimiento. Mantiene el límite de 0.1 m/s,
+objetivo visual 0.75 y las recuperaciones de percepción.
+
+Cerrar primero las instancias anteriores de HRI, YOLO y los workers de voz.
+El perfil está en `hri_reference_app/config/nao.yaml`; frases, respuestas y pausa
+inicial en `hri_reference_app/config/voice_commands.yaml`. No utiliza un LLM.
+Instalación de Vosk, alternativas con/sin Whisper y diagnóstico en
+[APLICACION_HRI.md](APLICACION_HRI.md).
 
 ## Orientación opcional de cámara y transcripción local
 
-`OrientCamera` se integra de forma opcional en el ensayo de seguimiento, con
+La entrada de bajo nivel `hri_app.launch.py` conserva la configuración anterior.
+En ese modo, `OrientCamera` se integra de forma opcional en el ensayo de seguimiento, con
 pausa de la base durante los ajustes. `TranscribeSpeech` puede añadirse mediante
 `transcribe_speech:=true confirm_listen:=ESCUCHAR`, incluso en preview. Usa español
 por defecto, sin indicar duración ni idioma en el comando normal. Escucha de forma continua

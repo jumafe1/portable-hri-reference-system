@@ -48,6 +48,7 @@ class IntegratedLaunchTest(unittest.TestCase):
         self.context = LaunchContext()
         self.context.launch_configurations.update(
             profile=str(self.path), confirm_listen="ESCUCHAR", yolo_model=str(self.model),
+            speech_backend="whisper", voice_commands="false", enable_motion="false", confirm="",
             whisper_model_path=str(self.model))
         for action in ENTRY.generate_launch_description().entities:
             if isinstance(action, DeclareLaunchArgument):
@@ -90,6 +91,7 @@ class IntegratedLaunchTest(unittest.TestCase):
         self.assertEqual(parsed.startup_text, "")
         self.assertEqual(parsed.target_height_ratio, .75)
         self.assertEqual(parsed.max_forward_speed, .1)
+        self.assertEqual(parsed.target_width_ratio, .33)
         group = next(action for action in actions if isinstance(action, GroupAction))
         inclusion = next(action for action in group.get_sub_entities() if isinstance(action, IncludeLaunchDescription))
         settings = dict(inclusion.launch_arguments)
@@ -100,6 +102,41 @@ class IntegratedLaunchTest(unittest.TestCase):
         self.assertEqual(settings["enable_nnpack"], "False")
         self.assertEqual(settings["model"], str(self.model))
         self.assertEqual(self.node_options("whisper_worker")["parameters"][0]["audio_topic"], "/nao/mic_stamped")
+
+    def test_vosk_command_demo_is_preconfigured_and_does_not_start_whisper(self):
+        model = self.work / "vosk-model"
+        (model / "am").mkdir(parents=True)
+        (model / "am/final.mdl").touch()
+        python = self.work / "python"
+        python.touch()
+        defaults = LaunchContext()
+        for action in ENTRY.generate_launch_description().entities:
+            if isinstance(action, DeclareLaunchArgument):
+                action.execute(defaults)
+        self.context.launch_configurations.update(defaults.launch_configurations)
+        self.context.launch_configurations.update(profile=str(self.path), yolo_model=str(self.model),
+            vosk_model_path=str(model), vosk_python=str(python))
+        with patch.object(ENTRY, "Node", return_value=MagicMock()) as worker:
+            self.launch()
+        self.assertEqual(worker.call_count, 1)
+        self.assertEqual(worker.call_args.kwargs["executable"], "vosk_worker")
+        self.assertEqual([c.kwargs["executable"] for c in self.node.call_args_list],
+                         ["capabilities2_server_node", "hri_app"])
+        parsed = follow_mode.parse_args(self.node_options("hri_app")["arguments"][2:])
+        self.assertTrue(parsed.enable_motion)
+        self.assertTrue(parsed.transcribe_speech)
+        self.assertTrue(parsed.voice_commands_config)
+        self.assertEqual(parsed.speech_provider, "hri_vosk_providers/VoskTranscribeSpeech")
+        self.assertEqual(parsed.startup_text, "")
+
+    def test_vosk_disabled_needs_no_model_and_removes_voice_gate(self):
+        with patch.object(ENTRY, "Node") as worker:
+            self.launch(speech_backend="vosk", voice_commands="true", transcribe_speech="false",
+                        vosk_model_path="missing", vosk_python="missing")
+        worker.assert_not_called()
+        args = follow_mode.parse_args(self.node_options("hri_app")["arguments"][2:])
+        self.assertFalse(args.voice_commands_config)
+        self.assertFalse(args.transcribe_speech)
 
     def test_motion_requires_both_flags_before_starting_any_worker(self):
         with self.assertRaisesRegex(RuntimeError, "MOVER"):
@@ -170,8 +207,18 @@ class IntegratedLaunchTest(unittest.TestCase):
         self.assertIn(("/backend/velocity", "/wheels/cmd_vel"), server["remappings"])
         self.assertEqual(self.node_options("whisper_worker")["parameters"][0]["audio_topic"], "/wheels/mic")
 
+    def test_width_target_can_be_overridden_or_disabled_from_the_command_line(self):
+        for value, expected in (("0.4", .4), ("0", 0.0)):
+            with self.subTest(value=value):
+                self.node.reset_mock()
+                self.launch(target_width_ratio=value)
+                parsed = follow_mode.parse_args(self.node_options("hri_app")["arguments"][2:])
+                self.assertEqual(parsed.target_width_ratio, expected)
+                self.assertEqual(parsed.target_height_ratio, .75)
+
     def test_invalid_boolean_or_excessive_speed_starts_nothing(self):
-        for options in ({"enable_motion": "yes"}, {"start_yolo": "yes"}, {"max_forward_speed": "0.5"}):
+        for options in ({"enable_motion": "yes"}, {"start_yolo": "yes"}, {"max_forward_speed": "0.5"},
+                        {"target_width_ratio": "0.9"}):
             before = dict(self.context.launch_configurations)
             with self.subTest(options=options), self.assertRaises(RuntimeError):
                 self.launch(**options)

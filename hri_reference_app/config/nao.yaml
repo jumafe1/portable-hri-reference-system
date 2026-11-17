@@ -6,13 +6,17 @@ application:
   expected_frame: CameraTop_optical_frame
   minimum_confidence: 0.65
   target_height_ratio: 0.75
+  # Follow by box width / image width (depends on this camera's horizontal FOV).
+  # NAO's low camera cuts a standing person at the image border well before
+  # they are near, so height alone stops far away. 0 returns to box height.
+  target_width_ratio: 0.33
   max_forward_speed: 0.10
   people_provider: hri_yolo_providers/YoloDetectPeople
   motion_provider: hri_naoqi_providers/NaoqiMoveVelocity
   speak_provider: hri_naoqi_providers/NaoSpeak
   speak_language: Spanish
   startup_text: "Hola, vamos a interactuar."
-  speech_provider: hri_whisper_providers/WhisperTranscribeSpeech
+  speech_provider: hri_vosk_providers/VoskTranscribeSpeech
   speech_language: es
   audio_input_format: naoqi_pcm_s16le
   audio_topic: /nao/mic_stamped
@@ -20,12 +24,17 @@ application:
   detections_topic: /yolo/detections
   backend_remappings: []
 whisper_model: ~/.cache/whisper/base.pt
+vosk:
+  model: models/vosk-model-small-es-0.42
+  python: .venvs/vosk/bin/python
 yolo:
   # Relative model paths are resolved against the workspace, not the shell's cwd.
   model: yolov8n.pt
   device: cpu
   input_image_topic: /nao/camera/front/image_raw
-  image_reliability: 1
+  # Live images: BEST_EFFORT (2), with YOLO's existing KEEP_LAST(1) queue.
+  # FollowPerson still stops on stale images and requires fresh observations.
+  image_reliability: 2
   namespace: yolo
   imgsz_height: 320
   imgsz_width: 320

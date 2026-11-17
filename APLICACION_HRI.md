@@ -12,38 +12,92 @@ Dejar abierto el driver de NAO que ya se usa. Cerrar los launches anteriores de
 HRI y las instancias manuales de YOLO y Whisper antes de usar este arranque.
 No cambia IP, red, postura, vida autónoma ni configuración del driver.
 
-En una terminal con ROS y el driver ya cargados:
+En esta rama, con el driver abierto y el workspace cargado, el comando es:
 
 ```bash
 source ~/Documents/portable_hri_ws/install/setup.bash
-ros2 launch hri_reference_app aplicacion_hri.launch.py \
-  confirm_listen:=ESCUCHAR \
-  enable_motion:=true confirm:=MOVER
+ros2 launch hri_reference_app aplicacion_hri.launch.py
 ```
 
-Para probar saludo, detección y transcripción sin movimiento de la base:
+Este lanzamiento **habilita micrófono y movimiento**, con los consentimientos ya
+configurados para la demostración solicitada. Inicia en pausa: espera «Nao, sígueme».
+Para comprobar percepción y voz sin habilitar la base:
 
 ```bash
-ros2 launch hri_reference_app aplicacion_hri.launch.py confirm_listen:=ESCUCHAR
+ros2 launch hri_reference_app aplicacion_hri.launch.py enable_motion:=false
 ```
 
-El perfil predeterminado es NAO: imagen 320×240, `CameraTop_optical_frame`,
-`target_height_ratio=0.75` y velocidad máxima de avance `0.1 m/s`. La velocidad
-real solicitada depende del error visual; el límite no es una velocidad constante.
-La cabeza permanece sin orientación automática.
+El perfil predeterminado conserva imagen 320×240, `CameraTop_optical_frame`,
+`target_width_ratio=0.33` y velocidad máxima de avance `0.1 m/s`. La cercanía se
+estima con el ancho de la caja respecto al ancho de la imagen: NAO avanza mientras
+ese ancho sea menor que 0,30 y deja de avanzar a partir de ahí. No es una distancia
+en metros y depende de la cámara, por eso se fija en el perfil del robot. Con
+`target_width_ratio:=0` se vuelve al criterio anterior por altura
+(`target_height_ratio=0.75`). La velocidad solicitada sigue siendo proporcional al
+error visual. La cabeza no se orienta.
 
-Al arrancar:
+Con imagen de 320 píxeles de ancho, el seguimiento avanza aunque la persona esté
+descentrada. Dentro de ±24 píxeles conserva la velocidad calculada por tamaño
+aparente; entre 24 y 60 la reduce progresivamente hasta un tercio mientras gira.
+Desde ±60 píxeles sigue avanzando a ese tercio mientras gira para centrar, en vez
+de detenerse a girar en el sitio. Estos márgenes escalan con el ancho de imagen. La cercanía sigue impidiendo avanzar, y las
+paradas por imagen antigua, persona ausente o varias personas siguen activas.
 
-1. YOLO y Whisper cargan sus modelos locales en CPU. Capabilities2 inicia su servidor.
-2. La aplicación establece un único vínculo de propiedad con Capabilities2.
-3. Si se indica `greet:=true`, adquiere `Speak`, dice «Hola, vamos a interactuar.»
-   y libera esa capacidad. El saludo está desactivado por defecto.
-4. Adquiere `DetectPeople` y configura `TranscribeSpeech`. Si se autorizó movimiento,
-   adquiere y verifica `MoveVelocity` antes de seguir.
-5. Escucha frases continuamente. Las transcripciones están en
-   `/hri/speech/transcript`; por defecto no se imprimen en la terminal.
+Al arrancar se cargan YOLO y el modelo pequeño español de Vosk. Whisper no se inicia.
+YASMIN configura `DetectPeople`, `TranscribeSpeech`, `Speak` y, si está habilitada,
+`MoveVelocity`; Capabilities2 conserva el vínculo y la propiedad de los proveedores.
+El saludo inicial sigue desactivado.
 
-La terminal muestra avisos y errores de HRI, Whisper y YOLO, además de las líneas de
+| Orden completa | Efecto |
+|---|---|
+| «Nao, detente», «Nao, para», «Nao, quédate quieto» | Pausa persistente y respuesta del grupo «Aquí me quedo». |
+| «Nao, no me sigas», «Nao, no vengas conmigo», «Nao, no te muevas», «Nao, no sigas» | También pausa; no se busca la palabra «sigas» como subcadena. |
+| «Nao, sígueme», «Nao, ven conmigo», «Nao, vuelve a seguirme» | Respuesta del grupo «Te voy a seguir» y reanudación condicionada a percepción válida. |
+
+Se exige la palabra de activación y una frase final completa. Los resultados parciales,
+antiguos, repetidos o fuera de la lista no ejecutan acciones. El reconocedor puede
+confundir sonidos; es un control de interacción, no un paro de emergencia.
+Las respuestas se eligen al azar, se envían por `Speak` después del acuse de parada,
+y se filtran resultados captados durante la respuesta y un segundo posterior.
+El seguimiento continúa procesando imágenes y enviando ceros mientras se habla.
+
+La pausa por voz no se levanta al volver a entrar en la imagen: requiere otra orden
+para seguir. Una vez autorizado seguir, se conservan las pausas y recuperaciones
+por persona ausente, varias personas o imagen antigua. Reanudar espera tres imágenes
+nuevas válidas. Si falla el reconocedor o la respuesta hablada, se mantiene la pausa.
+
+Cambiar vocabulario, respuestas y pausa inicial en
+[`hri_reference_app/config/voice_commands.yaml`](hri_reference_app/config/voice_commands.yaml).
+Cambiar robot, proveedores, topics y modelos en
+[`hri_reference_app/config/nao.yaml`](hri_reference_app/config/nao.yaml).
+Los límites visuales y de velocidad admiten los mismos argumentos de lanzamiento.
+
+Para conservar las alternativas anteriores:
+
+```bash
+# Seguimiento sin escucha ni control por voz (inicia el seguimiento visual).
+ros2 launch hri_reference_app aplicacion_hri.launch.py transcribe_speech:=false
+
+# Transcripción libre con Whisper, sin órdenes de movimiento por voz.
+ros2 launch hri_reference_app aplicacion_hri.launch.py \
+  speech_backend:=whisper voice_commands:=false
+```
+
+En una instalación nueva, preparar Vosk una sola vez (descarga oficial de ~39 MB):
+
+```bash
+cd ~/Documents/portable_hri_ws
+bash src/portable-hri-reference-system/scripts/setup_vosk.sh
+colcon build --symlink-install --packages-select \
+  hri_speech_providers hri_vosk_providers hri_whisper_providers hri_reference_app
+source install/setup.bash
+```
+
+El script utiliza `.venvs/vosk` y `models/vosk-model-small-es-0.42` dentro del workspace;
+no instala Torch ni cambia el entorno de Whisper. El lanzamiento posterior es local,
+sin descarga automática. El modelo y el entorno no se incluyen en Git.
+
+La terminal muestra avisos y errores de HRI, Vosk/Whisper y YOLO, además de las líneas de
 arranque y cierre de launch. Los diagnósticos repetitivos de seguimiento y voz
 quedan ocultos. Para depurar, añadir `log_level:=info`; para imprimir también
 transcripciones, añadir `print_transcript:=true` junto con ese nivel.
@@ -80,9 +134,12 @@ ros2 topic echo /hri/speech/transcript --field text
 
 | Opción | Uso |
 |---|---|
-| `enable_motion:=true confirm:=MOVER` | Habilitar seguimiento físico; por defecto es preview. |
-| `confirm_listen:=ESCUCHAR` | Autorizar el micrófono; la transcripción está seleccionada por defecto. |
-| `transcribe_speech:=false` | Ejecutar sin escucha ni worker Whisper. |
+| `enable_motion:=true confirm:=MOVER` | Habilitar seguimiento físico; en esta rama está habilitado, con pausa inicial por voz. |
+| `confirm_listen:=ESCUCHAR` | Ya configurado en el arranque integrado de esta rama. |
+| `transcribe_speech:=false` | Ejecutar seguimiento visual sin escucha ni control por voz. |
+| `speech_backend:=whisper voice_commands:=false` | Recuperar la transcripción libre con Whisper. |
+| `voice_commands_config:=/ruta/comandos.yaml` | Vocabulario, respuestas y pausa inicial. |
+| `vosk_model_path:=/ruta/modelo vosk_python:=/ruta/python` | Modelo local y entorno Python de Vosk. |
 | `greet:=true` | Habilitar el saludo; por defecto está desactivado. |
 | `log_level:=warn` | Predeterminado: ocultar mensajes informativos de seguimiento, Whisper, YOLO y Capabilities2. |
 | `log_level:=info print_transcript:=true` | Recuperar los diagnósticos detallados y el texto reconocido en terminal. |
@@ -93,7 +150,7 @@ ros2 topic echo /hri/speech/transcript --field text
 | `yolo_debug:=true` | Iniciar también la imagen de depuración de YOLO. |
 | `yolo_model:=/ruta/modelo.pt` | Pesos locales de YOLO. |
 | `whisper_model_path:=/ruta/modelo.pt` | Pesos locales de Whisper. |
-| `target_height_ratio:=0.75 max_forward_speed:=0.1` | Sobrescribir esos valores del perfil. |
+| `target_width_ratio:=0.33 max_forward_speed:=0.1` | Sobrescribir esos valores del perfil. Un ancho mayor acerca más el robot; `0` usa `target_height_ratio`. |
 
 Los workers externos no son detenidos por este launch. Usar una sola instancia HRI
 en el mismo dominio ROS: los contratos `/hri/*` y el servidor no están aislados por
@@ -114,13 +171,12 @@ Para registrar el siguiente ensayo:
 
 ```bash
 ros2 launch hri_reference_app aplicacion_hri.launch.py \
-  confirm_listen:=ESCUCHAR enable_motion:=true confirm:=MOVER \
   record_diagnostics:=true
 ```
 
 Al arrancar se imprime una única ruta `Diagnóstico HRI en archivo: .../summary.json`.
 Ese archivo se actualiza cada segundo y contiene frecuencias de detección,
-antigüedad de imágenes, motivos de espera, cola de Whisper, uso de CPU y memoria.
+antigüedad de imágenes, motivos de espera (incluidos los de voz), cola de voz, uso de CPU y memoria.
 `events.jsonl` en el mismo directorio permite relacionar las decisiones del
 seguimiento con la carga y los estados de voz. Los archivos de eventos rotan:
 como máximo se conservan tres de 10 MiB por ejecución. El resumen conserva los
@@ -135,12 +191,12 @@ best-effort: una pérdida del observador no demuestra una pérdida del productor
 `unknown_follow_time_s` separa interrupciones de observación de los tiempos
 atribuidos a decisiones del controlador.
 
-Para comparar el seguimiento con y sin Whisper, hacer dos ensayos separados de
+Para comparar el seguimiento con y sin voz, hacer dos ensayos separados de
 60–90 s en condiciones parecidas. Detener el primero con Ctrl+C y repetir el
 mismo comando añadiendo `transcribe_speech:=false`. Cada ejecución genera su
 propio directorio. Comparar `streams.yolo`, `streams.people`, los tiempos en
 `waiting_fresh_images`/`reacquiring_person`, y los eventos de CPU durante
-`speech.state=processing`. En `cpu_percent_one_core`, 100 % corresponde a un núcleo
+`speech.state` (Vosk procesa el flujo continuamente). En `cpu_percent_one_core`, 100 % corresponde a un núcleo
 lógico, por lo que un proceso con varios hilos puede superar 100 %.
 
 Este registro ayuda a localizar las pausas; no cambia los límites del controlador
@@ -168,12 +224,13 @@ interpretación de órdenes de movimiento a partir de la transcripción.
 Para otro robot, copiar el perfil, cambiar `robot`, los topics y los identificadores
 de proveedor, y pasar `robot:=mi_robot profile:=/ruta/mi_robot.yaml`. Los proveedores
 se seleccionan desde el perfil; el controlador visual no necesita nombres de NAO.
+La opción `speech_backend` selecciona explícitamente Vosk o Whisper en esta entrada.
 Un robot de ruedas necesita un proveedor `MoveVelocity` que cumpla el contrato,
 incluyendo confirmación de parada, límites y watchdog; un adaptador de voz implementa
 `Speak`. Cambiar el nombre del robot no proporciona esos adaptadores.
 
-El worker Whisper actual acepta `naoqi_pcm_s16le`, mensajes estampados de audio
-mono a 16 kHz más su información de formato. Para reutilizarlo hay que adaptar el
+Los workers Vosk y Whisper actuales aceptan `naoqi_pcm_s16le`, mensajes estampados de audio
+mono a 16 kHz más su información de formato. Para reutilizarlos hay que adaptar el
 audio del otro robot a ese formato o implementar otro proveedor `TranscribeSpeech`.
 `backend_remappings` del perfil permite remapear nombres internos de proveedores
 sin cambiar los contratos públicos. Un detector diferente requiere su proveedor
@@ -207,3 +264,15 @@ source install/setup.bash
 ```
 
 El launch anterior `hri_app.launch.py` continúa disponible para ensayos individuales.
+
+## Comprobación de software de órdenes de voz
+
+`tests/vosk_voice_probe.py` usa el modelo real de Vosk, audio español sintético en
+memoria, Capabilities2 y servicios simulados. Requiere un dominio DDS vacío y local;
+no inicia el driver ni usa micrófono o altavoces. Sus resultados no sustituyen la
+prueba acústica con el NAO.
+
+El puente compartido `hri_speech_providers` gestiona solicitudes, identificadores y
+arrendamientos. `hri_vosk_providers` y `hri_whisper_providers` seleccionan su motor;
+ningún reconocedor decide movimiento. `voice_command_policy.py` interpreta órdenes
+y `voice_commands.py` coordina la pausa y las respuestas dentro de FollowPerson.

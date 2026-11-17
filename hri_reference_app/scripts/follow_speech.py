@@ -256,12 +256,12 @@ class FollowSpeech:
                     self.retry_at = now + 0.1
                     return
                 if (not self.has_captured and now < self.startup_until and response.message in {
-                        "whisper_worker_unavailable", "audio_info_unavailable"}):
+                        "whisper_worker_unavailable", "speech_worker_unavailable", "audio_info_unavailable"}):
                     # Explicit non-admission only: a lost reply may already have captured audio.
                     self.retry_deadline = self.startup_until
                     self.retry_until = min(self.startup_until, now + 3.0)
                     self.retry_at = now + 0.5
-                    status = "waiting_worker" if response.message == "whisper_worker_unavailable" else "waiting_audio_info"
+                    status = "waiting_worker" if response.message in {"whisper_worker_unavailable", "speech_worker_unavailable"} else "waiting_audio_info"
                     if self.status != status:
                         self.node.get_logger().info("speech_status: " + status)
                     self._status(status)
@@ -298,6 +298,9 @@ class FollowSpeech:
                 return
             if result.success and result.text.strip():
                 self.transcripts_received += 1
+                voice = getattr(self.session, "voice", None)
+                if voice is not None:
+                    voice.receive(result.text, stamp)
                 if self.args.print_transcript:
                     # JSON escaping avoids terminal control sequences in model-generated output.
                     self.node.get_logger().info("transcript: " + json.dumps(result.text, ensure_ascii=False))

@@ -21,6 +21,7 @@ from follow_camera import FollowCamera
 from follow_motion import FollowMotion
 from follow_speech import FollowSpeech
 from startup_speak import StartupSpeak
+from voice_commands import VoiceCommands
 
 
 CAPABILITY = "hri_capability_interfaces/DetectPeople"
@@ -38,6 +39,7 @@ class FollowSession:
             minimum_confidence=args.minimum_confidence,
             target_height_ratio=args.target_height_ratio,
             max_forward_speed=getattr(args, "max_forward_speed", 0.10),
+            target_width_ratio=getattr(args, "target_width_ratio", 0.0),
         ))
         self.frames = 0
         self.finished = False
@@ -64,6 +66,7 @@ class FollowSession:
         self.camera = None
         self.speech = None
         self.startup_speak = None
+        self.voice = None
         # Diagnostics must not stall observation waiting for reliable readers.
         latest = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
         # One explicit node/executor serves perception, services and heartbeat.
@@ -92,6 +95,8 @@ class FollowSession:
                 self.motion = FollowMotion(self)
                 if getattr(args, "orient_camera", False):
                     self.camera = FollowCamera(self)
+            if getattr(args, "voice_commands_config", ""):
+                self.voice = VoiceCommands(self)
             self.executor.add_node(self.node)
             self.spin_thread = threading.Thread(
                 target=self.executor.spin, name="follow-ros", daemon=True,
@@ -273,6 +278,9 @@ class FollowSession:
             "person_wait_frames": self.person_wait_frames,
             "person_recoveries": self.person_recoveries,
             "distance_m": None,
+            "voice_status": self.voice.status if getattr(self, "voice", None) else "disabled",
+            "voice_paused": self.voice.paused if getattr(self, "voice", None) else False,
+            "voice_commands_received": self.voice.accepted_commands if getattr(self, "voice", None) else 0,
             "speech_status": self.speech.status if getattr(self, "speech", None) else "disabled",
             "transcripts_received": self.speech.transcripts_received if getattr(self, "speech", None) else 0,
             "camera_orientation_requested": getattr(self.args, "orient_camera", False),
@@ -361,9 +369,16 @@ class FollowSession:
         # until fresh perception returns or the operator cancels. Provider and
         # timestamp/geometry faults remain fatal and use the existing cleanup.
         speech = getattr(self, "speech", None)
+        voice = getattr(self, "voice", None)
         while rclpy.ok() and not self.cancelled.is_set():
+            if speech:
+                speech.tick()
+            if voice:
+                voice.tick()
             with self.lock:
-                decision = self._checked_decision()
+                decision = self._checked_decision(allow_camera_commands=not bool(voice and voice.paused))
+                if voice:
+                    decision = voice.gate(decision)
                 if self.motion:
                     error = self.motion.send(decision)
                     if error:
@@ -374,6 +389,8 @@ class FollowSession:
                             self.image_recovery_zero_sent = time.monotonic()
                         if self.person_wait_reason and self.person_wait_zero_sent is None:
                             self.person_wait_zero_sent = time.monotonic()
+                if voice and not self.controller.halted:
+                    voice.sent(decision)
                 self.publish_preview(decision)
                 if self.controller.halted:
                     self.finished = True
@@ -381,8 +398,6 @@ class FollowSession:
                     if speech:
                         speech.freeze("stopped_visual_fault")
                     return ABORT
-            if speech:
-                speech.tick()
             self.cancelled.wait(0.05)
         if speech:
             speech.freeze("cancelled")
